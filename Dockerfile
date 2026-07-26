@@ -17,6 +17,11 @@ COPY . .
 # so we only run the TypeScript compile here.
 RUN npx tsc
 
+# Drop devDependencies now that the compile is done, so we can copy
+# node_modules as-is into the runtime image (better-sqlite3's native addon
+# is already built and doesn't need to be rebuilt there).
+RUN npm prune --omit=dev
+
 # --- runtime stage ---
 FROM node:20-bookworm-slim AS runtime
 
@@ -29,11 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# node_modules already has the compiled better-sqlite3 addon from the builder,
-# so we don't need build tools in the final image
-COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/views ./src/views
