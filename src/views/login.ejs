@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Uptinger</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+</head>
+
+<body class="h-full text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+    <div class="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2">
+
+        <!-- Left Column: Text & Hero Content -->
+        <div
+            class="relative flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-gradient-to-br from-[var(--color-bg-surface)] via-[var(--color-bg-surface)] to-[var(--color-bg-main)] border-b lg:border-b-0 lg:border-r border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+            <div class="space-y-6 max-w-xl mx-auto lg:mx-0 w-full">
+                <!-- Uptinger Brand Logo & Badge -->
+                <div class="flex items-center">
+                    <img src="/logo.png" alt="Uptinger" class="h-14 w-14">
+                    <div class="flex items-baseline space-x-2">
+                        <span
+                            class="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-[var(--color-primary)] bg-clip-text text-transparent">
+                            Uptinger
+                        </span>
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-10 sm:pt-16">
+                    <h1
+                        class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-left text-[var(--color-text-primary)] tracking-tight leading-none">
+                        Real-Time Uptime &amp; Health <span class="text-[var(--color-primary)]">Monitoring</span>
+                    </h1>
+                    <p class="text-[var(--color-text-secondary)] text-base sm:text-lg leading-relaxed pt-2">
+                        Track HTTP endpoints, DNS servers, PostgreSQL & MySQL databases, TCP ports, SSL certificates,
+                        and network services with zero friction.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Highlights list -->
+            <div
+                class="pt-8 sm:pt-12 space-y-4 border-t border-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)] mt-12 max-w-xl mx-auto lg:mx-0 w-full">
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="h-6 w-6 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary)] flex items-center justify-center flex-shrink-0 border border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)]">
+                        <i class="fa-solid fa-circle-check text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium text-[var(--color-text-secondary)]">Continuous 60s Heartbeat Check
+                        Rate</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="h-6 w-6 rounded-full bg-[color-mix(in_srgb,var(--color-secondary)_10%,transparent)] text-[var(--color-secondary)] flex items-center justify-center flex-shrink-0 border border-[color-mix(in_srgb,var(--color-secondary)_20%,transparent)]">
+                        <i class="fa-solid fa-circle-check text-xs"></i>
+                    </div>
+                    <span class="text-sm font-medium text-[var(--color-text-secondary)]">Integrated SQLite Latency Log
+                        Archiving</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Login Form -->
+        <div class="p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-[var(--color-bg-surface)]">
+            <div class="max-w-md w-full mx-auto space-y-8">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-left text-[var(--color-text-primary)]">Welcome to <span
+                            class="text-[var(--color-primary)]">Uptinger</span></h2>
+                    <p class="text-sm text-[var(--color-text-secondary)] mt-2">Sign in to access your monitoring
+                        dashboard.</p>
+                </div>
+
+                <form id="loginForm" class="space-y-6" onsubmit="handleLogin(event)">
+                    <div>
+                        <label for="email"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Email
+                            Address</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-envelope text-base"></i>
+                            </div>
+                            <input type="email" id="email" name="email" required placeholder="admin@uptinger.com"
+                                class="w-full pl-10 pr-4 py-3.5 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Password</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-lock text-base"></i>
+                            </div>
+                            <input type="password" id="password" name="password" required placeholder="••••••••"
+                                class="w-full pl-10 pr-4 py-3.5 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-sm">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="rememberMe" class="toggle-switch">
+                            <span
+                                class="text-[var(--color-text-secondary)] hover:text-[var(--color-text-secondary)] transition">Remember
+                                me</span>
+                        </label>
+                        <a href="/auth/forgot-password"
+                            class="font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)] transition">Forgot
+                            password?</a>
+                    </div>
+
+                    <button type="submit" id="submitBtn"
+                        class="w-full py-3.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-bg-main)] font-extrabold rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] transition duration-200 flex items-center justify-center space-x-2 disabled:opacity-75 disabled:cursor-not-allowed">
+                        <span id="btnText">Sign In</span>
+                        <i id="btnSpinner" class="fa-solid fa-spinner fa-spin text-lg text-[var(--color-bg-main)]"
+                            style="display: none;"></i>
+                    </button>
+                </form>
+
+                <p class="text-center text-xs text-[var(--color-text-muted)] pt-4">
+                    Uptinger &bull; Powered by Emitlogic Technologies Private Limited
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            btn.disabled = true;
+            btnText.textContent = 'Signing in...';
+            btnSpinner.style.display = 'inline-block';
+
+            try {
+                const response = await fetch('/api/account/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ email, password, rememberMe })
+                });
+
+                const result = await response.json();
+
+                if (result.status) {
+                    window.location.assign(result.data?.redirect || '/dashboard');
+                } else {
+                    showToast(result.message || 'Login failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('A network error occurred. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Sign In';
+                btnSpinner.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

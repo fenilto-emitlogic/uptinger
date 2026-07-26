@@ -1,0 +1,415 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
+import { ALL_PERMISSIONS } from './permissions.js';
+
+const dataDir = path.resolve('data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = path.join(dataDir, 'monitor.db');
+export const db = new Database(dbPath);
+
+// Enable WAL mode for high-throughput reads & writes
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+// Initialize required tables
+db.exec(`
+    CREATE TABLE IF NOT EXISTS tbl_init_setup (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status INTEGER DEFAULT 1,
+        step_no INTEGER DEFAULT 1,
+        is_completed INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_organization (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type INTEGER,
+        status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        owner_id INTEGER NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (owner_id) REFERENCES tbl_users(id) ON DELETE CASCADE,
+        FOREIGN KEY (updated_by) REFERENCES tbl_users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_passwords (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        password TEXT NOT NULL,
+        status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_user_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        meta TEXT,
+        ip_address TEXT,
+        created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status INTEGER DEFAULT 1,
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'http',
+        url TEXT,
+        hostname TEXT,
+        port INTEGER,
+        interval_seconds INTEGER DEFAULT 60,
+        retry_interval INTEGER DEFAULT 60,
+        max_retries INTEGER DEFAULT 3,
+        resend_interval INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'ONLINE',
+        is_paused INTEGER DEFAULT 0,
+        tags TEXT DEFAULT '',
+        config TEXT DEFAULT '{}',
+        group_id INTEGER,
+        notify_on_down INTEGER DEFAULT 1,
+        notify_on_paused INTEGER DEFAULT 0,
+        notify_on_recovery INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE
+        FOREIGN KEY (created_by) REFERENCES tbl_users(id) ON DELETE CASCADE
+        FOREIGN KEY (updated_by) REFERENCES tbl_users(id) ON DELETE CASCADE
+        FOREIGN KEY (group_id) REFERENCES tbl_groups(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitor_analytics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER UNIQUE NOT NULL,
+        total_checks INTEGER DEFAULT 0,
+        average_response_time INTEGER DEFAULT 0,
+        total_downtime INTEGER DEFAULT 0,
+        total_downtime_24h INTEGER DEFAULT 0,
+        total_downtime_30d INTEGER DEFAULT 0,
+        total_uptime INTEGER DEFAULT 0,
+        total_uptime_24h INTEGER DEFAULT 0,
+        total_uptime_30d INTEGER DEFAULT 0,
+        status TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitor_checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        ping_ms INTEGER DEFAULT 0,
+        status_code INTEGER DEFAULT 200,
+        msg TEXT DEFAULT '',
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_roles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        permissions TEXT NOT NULL DEFAULT '[]',
+        is_system INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE,
+        UNIQUE(org_id, name)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_user_orgs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        role_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE
+        FOREIGN KEY (created_by) REFERENCES tbl_users(id) ON DELETE CASCADE
+        FOREIGN KEY (updated_by) REFERENCES tbl_users(id) ON DELETE CASCADE
+        FOREIGN KEY (role_id) REFERENCES tbl_roles(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        config TEXT DEFAULT '{}',
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_proxies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        protocol TEXT DEFAULT 'http',
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL,
+        auth_user TEXT,
+        auth_pass TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE,
+        UNIQUE(org_id, name)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_user_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER NOT NULL,
+        FOREIGN KEY (group_id) REFERENCES tbl_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE,
+        UNIQUE(group_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitor_notify_recipients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE,
+        UNIQUE(monitor_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_smtp_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL UNIQUE,
+        host TEXT,
+        port INTEGER,
+        username TEXT,
+        password TEXT,
+        encryption TEXT DEFAULT 'starttls',
+        from_email TEXT,
+        from_name TEXT,
+        is_active INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_eagle_eye_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL UNIQUE,
+        autoscroll_interval_seconds INTEGER DEFAULT 30,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitor_type (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        icon TEXT DEFAULT '',
+        category TEXT NOT NULL DEFAULT 'General',
+        sort_order INTEGER DEFAULT 0,
+        status INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        name TEXT NOT NULL COLLATE NOCASE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE,
+        UNIQUE(org_id, name)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_monitor_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tbl_tags(id) ON DELETE CASCADE,
+        UNIQUE(monitor_id, tag_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_email_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        html TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (org_id) REFERENCES tbl_organization(id) ON DELETE CASCADE,
+        FOREIGN KEY (updated_by) REFERENCES tbl_users(id) ON DELETE SET NULL,
+        UNIQUE(org_id, type)
+    );
+
+    CREATE TABLE IF NOT EXISTS tbl_password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        purpose TEXT NOT NULL DEFAULT 'reset',
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES tbl_users(id) ON DELETE CASCADE
+    );
+
+    -- FK/lookup columns hit on every request (org-scoped listing, monitor detail,
+    -- membership checks) but had no index, forcing a full-table scan as data grows.
+    CREATE INDEX IF NOT EXISTS idx_monitors_org_id ON tbl_monitors(org_id);
+    CREATE INDEX IF NOT EXISTS idx_monitor_checks_monitor_id ON tbl_monitor_checks(monitor_id);
+    CREATE INDEX IF NOT EXISTS idx_monitor_checks_monitor_id_timestamp ON tbl_monitor_checks(monitor_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_user_orgs_user_id ON tbl_user_orgs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_orgs_org_id ON tbl_user_orgs(org_id);
+    CREATE INDEX IF NOT EXISTS idx_user_groups_user_id ON tbl_user_groups(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_groups_group_id ON tbl_user_groups(group_id);
+    CREATE INDEX IF NOT EXISTS idx_monitor_tags_monitor_id ON tbl_monitor_tags(monitor_id);
+    CREATE INDEX IF NOT EXISTS idx_monitor_notify_recipients_monitor_id ON tbl_monitor_notify_recipients(monitor_id);
+    CREATE INDEX IF NOT EXISTS idx_roles_org_id ON tbl_roles(org_id);
+    CREATE INDEX IF NOT EXISTS idx_groups_org_id ON tbl_groups(org_id);
+    CREATE INDEX IF NOT EXISTS idx_tags_org_id ON tbl_tags(org_id);
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON tbl_user_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON tbl_password_resets(user_id);
+`);
+
+// Backfill: orgs created before roles existed get default Admin/Member roles,
+// and any membership without a role_id defaults to Admin (preserves pre-UAD access).
+const orgsWithoutRoles = db.prepare(`
+    SELECT o.id FROM tbl_organization o
+    WHERE NOT EXISTS (SELECT 1 FROM tbl_roles r WHERE r.org_id = o.id)
+`).all() as { id: number }[];
+if (orgsWithoutRoles.length > 0) {
+    const insertRole = db.prepare(`INSERT INTO tbl_roles (org_id, name, permissions, is_system) VALUES (?, ?, ?, 1)`);
+    const backfillMemberships = db.prepare(`UPDATE tbl_user_orgs SET role_id = ? WHERE org_id = ? AND role_id IS NULL`);
+    const ALL_PERMS = JSON.stringify(['monitor.view', 'monitor.create', 'monitor.edit', 'monitor.delete', 'org.view', 'org.create', 'org.edit', 'org.delete', 'org.invite', 'role.view', 'role.create', 'role.edit', 'role.delete']);
+    const MEMBER_PERMS = JSON.stringify(['monitor.view', 'monitor.create', 'monitor.edit', 'org.view', 'role.view']);
+    for (const org of orgsWithoutRoles) {
+        const adminRole = insertRole.run(org.id, 'Admin', ALL_PERMS);
+        insertRole.run(org.id, 'Member', MEMBER_PERMS);
+        backfillMemberships.run(adminRole.lastInsertRowid, org.id);
+    }
+}
+
+// Backfill: existing system Admin roles predate newer permissions (Groups, SMTP,
+// monitor.view_all) added after they were first seeded — grant the union so
+// admins don't lose access to new features on upgrade.
+const systemAdminRoles = db.prepare(`SELECT id, permissions FROM tbl_roles WHERE is_system = 1 AND name = 'Admin'`).all() as { id: number; permissions: string }[];
+const updateRolePerms = db.prepare(`UPDATE tbl_roles SET permissions = ? WHERE id = ?`);
+for (const role of systemAdminRoles) {
+    const current: string[] = JSON.parse(role.permissions || '[]');
+    const merged = Array.from(new Set([...current, ...ALL_PERMISSIONS]));
+    if (merged.length !== current.length) {
+        updateRolePerms.run(JSON.stringify(merged), role.id);
+    }
+}
+
+// Seed default monitor types (safe to re-run; keyed on unique `key`)
+const monitorTypeSeed: Array<{ key: string; label: string; description: string; icon: string; category: string; sort_order: number }> = [
+    { key: 'http', label: 'HTTP(s)', description: 'Monitor a website or REST endpoint over HTTP/HTTPS', icon: 'globe', category: 'General', sort_order: 1 },
+    { key: 'http-keyword', label: 'HTTP(s) - Keyword', description: 'Check a page for the presence/absence of a keyword', icon: 'search', category: 'General', sort_order: 2 },
+    { key: 'tcp', label: 'TCP Port', description: 'Check if a TCP port is open and accepting connections', icon: 'plug', category: 'General', sort_order: 3 },
+    { key: 'ping', label: 'Ping', description: 'Send ICMP pings to check host reachability', icon: 'activity', category: 'General', sort_order: 4 },
+    { key: 'dns', label: 'DNS', description: 'Resolve a DNS record and validate the response', icon: 'network', category: 'General', sort_order: 5 },
+    { key: 'docker', label: 'Docker Container', description: 'Monitor the running state of a Docker container', icon: 'box', category: 'General', sort_order: 6 },
+    { key: 'push', label: 'Push', description: 'Passive monitor that expects periodic pings from your service', icon: 'upload', category: 'Passive', sort_order: 1 },
+    { key: 'manual', label: 'Manual', description: 'Manually managed status, not actively checked', icon: 'hand', category: 'Passive', sort_order: 2 },
+    { key: 'smtp', label: 'SMTP', description: 'Check an SMTP mail server connection', icon: 'mail', category: 'Specific', sort_order: 1 },
+    { key: 'mqtt', label: 'MQTT', description: 'Check an MQTT broker topic', icon: 'radio', category: 'Specific', sort_order: 2 },
+    { key: 'rabbitmq', label: 'RabbitMQ', description: 'Check a RabbitMQ node health', icon: 'inbox', category: 'Specific', sort_order: 3 },
+    { key: 'websocket', label: 'Websocket Upgrade', description: 'Check a websocket endpoint upgrade handshake', icon: 'zap', category: 'Specific', sort_order: 4 },
+    { key: 'mssql', label: 'Microsoft SQL Server', description: 'Check connectivity to a Microsoft SQL Server instance', icon: 'database', category: 'Database', sort_order: 1 },
+    { key: 'mongodb', label: 'MongoDB', description: 'Check connectivity to a MongoDB instance', icon: 'database', category: 'Database', sort_order: 2 },
+    { key: 'mysql', label: 'MySQL/MariaDB', description: 'Check connectivity to a MySQL or MariaDB instance', icon: 'database', category: 'Database', sort_order: 3 },
+    { key: 'postgres', label: 'PostgreSQL', description: 'Check connectivity to a PostgreSQL instance', icon: 'database', category: 'Database', sort_order: 4 },
+    { key: 'redis', label: 'Redis', description: 'Check connectivity to a Redis instance', icon: 'database', category: 'Database', sort_order: 5 },
+];
+
+const upsertMonitorType = db.prepare(`
+    INSERT INTO tbl_monitor_type (key, label, description, icon, category, sort_order)
+    VALUES (@key, @label, @description, @icon, @category, @sort_order)
+    ON CONFLICT(key) DO UPDATE SET
+        label = excluded.label,
+        description = excluded.description,
+        icon = excluded.icon,
+        category = excluded.category,
+        sort_order = excluded.sort_order
+`);
+const seedMonitorTypes = db.transaction((rows: typeof monitorTypeSeed) => {
+    for (const row of rows) upsertMonitorType.run(row);
+});
+seedMonitorTypes(monitorTypeSeed);
+
+// Seed default tags for orgs that have none yet (new orgs, and pre-existing
+// orgs from before the tags table existed).
+const DEFAULT_TAG_NAMES = ['Production', 'Staging', 'Development', 'Web', 'API', 'Database', 'Critical', 'Internal'];
+const orgsWithoutTags = db.prepare(`
+    SELECT o.id FROM tbl_organization o
+    WHERE NOT EXISTS (SELECT 1 FROM tbl_tags t WHERE t.org_id = o.id)
+`).all() as { id: number }[];
+if (orgsWithoutTags.length > 0) {
+    const insertTag = db.prepare(`INSERT INTO tbl_tags (org_id, name) VALUES (?, ?)`);
+    const seedOrgTags = db.transaction((orgs: { id: number }[]) => {
+        for (const org of orgs) {
+            for (const name of DEFAULT_TAG_NAMES) insertTag.run(org.id, name);
+        }
+    });
+    seedOrgTags(orgsWithoutTags);
+}
+
+// Migrate legacy comma-separated tbl_monitors.tags into the tags table/join
+// table, for monitors created before tbl_monitor_tags existed.
+const monitorsWithLegacyTags = db.prepare(`
+    SELECT id, org_id, tags FROM tbl_monitors
+    WHERE tags IS NOT NULL AND tags != ''
+    AND id NOT IN (SELECT DISTINCT monitor_id FROM tbl_monitor_tags)
+`).all() as { id: number; org_id: number; tags: string }[];
+if (monitorsWithLegacyTags.length > 0) {
+    const findTag = db.prepare(`SELECT id FROM tbl_tags WHERE org_id = ? AND name = ?`);
+    const insertTag = db.prepare(`INSERT INTO tbl_tags (org_id, name) VALUES (?, ?)`);
+    const linkTag = db.prepare(`INSERT OR IGNORE INTO tbl_monitor_tags (monitor_id, tag_id) VALUES (?, ?)`);
+    const migrateLegacyTags = db.transaction((rows: typeof monitorsWithLegacyTags) => {
+        for (const m of rows) {
+            const names = m.tags.split(',').map(t => t.trim()).filter(Boolean);
+            for (const name of names) {
+                const existing = findTag.get(m.org_id, name) as { id: number } | undefined;
+                const tagId = existing ? existing.id : Number(insertTag.run(m.org_id, name).lastInsertRowid);
+                linkTag.run(m.id, tagId);
+            }
+        }
+    });
+    migrateLegacyTags(monitorsWithLegacyTags);
+}

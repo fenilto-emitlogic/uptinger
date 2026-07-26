@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+    <script src="/js/modal.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+
+    <%- include('partials/header', { user, orgs: (typeof orgs !=='undefined' ? orgs : []), currentOrg: (typeof
+        currentOrg !=='undefined' ? currentOrg : null), page: 'eagle-eye' }) %>
+
+        <main class="flex-1 max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+            <!-- Page Heading -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">Eagle Eye</h1>
+                    <p class="text-sm text-[var(--color-text-secondary)]">Company-wide health overview across every
+                        monitored service.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center space-x-2 text-xs font-medium text-[var(--color-text-muted)]">
+                        <span id="liveDot" class="w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse"></span>
+                        <span>Auto-refreshing every 5s</span>
+                        <span id="lastUpdatedText" class="font-mono">-</span>
+                    </div>
+                    <button id="kioskModeToggle" onclick="toggleKioskMode()"
+                        class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                        </svg>
+                        <span id="kioskModeLabel">Kiosk Mode</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STAT TILES: color-highlighted -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wide">Total Monitors
+                    </div>
+                    <div id="statTotal" class="text-3xl font-black font-mono text-[var(--color-text-primary)]">0</div>
+                </div>
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-primary)] uppercase tracking-wide">Up</div>
+                    <div id="statUp" class="text-3xl font-black font-mono text-[var(--color-primary)]">0</div>
+                </div>
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-error)] uppercase tracking-wide">Down</div>
+                    <div id="statDown" class="text-3xl font-black font-mono text-[var(--color-error)]">0</div>
+                </div>
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-warning)] uppercase tracking-wide">Paused</div>
+                    <div id="statPaused" class="text-3xl font-black font-mono text-[var(--color-warning)]">0</div>
+                </div>
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-secondary)] uppercase tracking-wide">Avg Response
+                    </div>
+                    <div id="statAvgResponse" class="text-3xl font-black font-mono text-[var(--color-text-primary)]">-
+                    </div>
+                </div>
+                <div
+                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 space-y-1">
+                    <div class="text-xs font-bold text-[var(--color-error)] uppercase tracking-wide">Needs Attention
+                    </div>
+                    <div id="statAttention" class="text-3xl font-black font-mono text-[var(--color-error)]">0
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN LAYOUT: attention list (sticky, left) + graphs (right) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- NEEDS ATTENTION: sticky left column -->
+                <div class="lg:col-span-3 lg:sticky lg:top-30 space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+
+                    <!-- DOWN -->
+                    <div class="space-y-3">
+                        <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-error)]"></span>
+                            <span>Down Services</span>
+                            <span id="downCountBadge"
+                                class="text-xs font-bold px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--color-error)_15%,transparent)] text-[var(--color-error)]">0</span>
+                        </h2>
+                        <div id="downList" class="space-y-2"></div>
+                        <div id="downEmptyState"
+                            class="hidden py-8 flex flex-col items-center justify-center text-center space-y-1.5 bg-[color-mix(in_srgb,var(--color-bg-surface)_40%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] rounded-2xl">
+                            <svg class="w-7 h-7 text-[var(--color-primary)]" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm font-semibold text-[var(--color-text-primary)]">No services down</p>
+                        </div>
+                    </div>
+
+                    <!-- PAUSED -->
+                    <div class="space-y-3">
+                        <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-warning)]"></span>
+                            <span>Paused Services</span>
+                            <span id="pausedCountBadge"
+                                class="text-xs font-bold px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] text-[var(--color-warning)]">0</span>
+                        </h2>
+                        <div id="pausedList" class="space-y-2"></div>
+                        <div id="pausedEmptyState"
+                            class="hidden py-8 flex flex-col items-center justify-center text-center space-y-1.5 bg-[color-mix(in_srgb,var(--color-bg-surface)_40%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] rounded-2xl">
+                            <svg class="w-7 h-7 text-[var(--color-text-muted)]" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm font-semibold text-[var(--color-text-primary)]">No services paused</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- GRAPHS: right column -->
+                <div class="lg:col-span-9 space-y-6">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-6">
+                        <div
+                            class="sm:col-span-8 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Fleet-wide Response Time
+                                Trend</h2>
+                            <div class="relative h-56 w-full">
+                                <canvas id="fleetTrendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div
+                            class="sm:col-span-4 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Health by Type</h2>
+                            <div class="relative h-56 w-full">
+                                <canvas id="typeRadarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-6">
+                        <div
+                            class="sm:col-span-4 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Status Distribution</h2>
+                            <div class="relative h-56 w-full">
+                                <canvas id="statusPieChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div
+                            class="sm:col-span-8 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Response Time</h2>
+                            <div class="relative h-56 w-full">
+                                <canvas id="responseVerticalChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-6">
+                        <div
+                            class="sm:col-span-6 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Uptime by Service</h2>
+                            <div class="relative flex-1 min-h-56 w-full">
+                                <canvas id="uptimeHorizontalChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div
+                            class="sm:col-span-6 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Category Breakdown</h2>
+                            <div id="categoryCounts" class="space-y-3 flex-1"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+
+        <footer
+            class="border-t border-[var(--color-bg-surface)] py-4 text-center text-xs text-[var(--color-text-muted)]">
+            Uptinger Engine • Eagle Eye Fleet Overview<br>
+            Powered by Emitlogic Technologies Private Limited
+        </footer>
+
+        <script>
+            let monitors = <%- jsonScript(sites) %>;
+            const CURRENT_ORG_ID = <%- jsonScript(typeof currentOrg !== 'undefined' && currentOrg ? currentOrg.org_id : null) %>;
+
+            const LIVE_REFRESH_INTERVAL_MS = 5000;
+            let liveRefreshInFlight = false;
+
+            let statusPieChart = null;
+            let responseVerticalChart = null;
+            let uptimeHorizontalChart = null;
+            let typeRadarChart = null;
+            let trendChart = null;
+
+            document.addEventListener('DOMContentLoaded', () => {
+                initCharts();
+                renderAll();
+                setInterval(refreshEagleEyeData, LIVE_REFRESH_INTERVAL_MS);
+            });
+
+            async function refreshEagleEyeData() {
+                if (liveRefreshInFlight) return;
+                liveRefreshInFlight = true;
+                try {
+                    const res = await fetch('/api/monitors/dashboard/live' + location.search, { headers: { 'Accept': 'application/json' } });
+                    const json = await res.json();
+                    if (!json || !json.status) return;
+                    monitors = json.data.sites || [];
+                    renderAll();
+                } catch (err) {
+                    console.error('Eagle Eye live refresh failed', err);
+                } finally {
+                    liveRefreshInFlight = false;
+                }
+            }
+
+            function classify(site) {
+                if (site.is_paused) return 'PAUSED';
+                return site.status === 'ONLINE' ? 'UP' : 'DOWN';
+            }
+
+            function themeColor(name) {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            }
+
+            function renderAll() {
+                renderSummary();
+                updateCharts();
+                renderCategoryCounts();
+                renderAttentionLists();
+                const ts = new Date();
+                const el = document.getElementById('lastUpdatedText');
+                if (el) el.innerText = `(updated ${ts.toLocaleTimeString()})`;
+            }
+
+            function renderSummary() {
+                const total = monitors.length;
+                let up = 0, down = 0, paused = 0, responseSum = 0, responseCount = 0, uptimeSum = 0, uptimeCount = 0;
+
+                monitors.forEach(m => {
+                    const cls = classify(m);
+                    if (cls === 'UP') up++;
+                    else if (cls === 'DOWN') down++;
+                    else paused++;
+
+                    const respMs = parseFloat(m.current_response);
+                    if (!Number.isNaN(respMs)) { responseSum += respMs; responseCount++; }
+
+                    const uptimePct = parseFloat(m.uptime_24h);
+                    if (!Number.isNaN(uptimePct)) { uptimeSum += uptimePct; uptimeCount++; }
+                });
+
+                document.getElementById('statTotal').innerText = total;
+                document.getElementById('statUp').innerText = up;
+                document.getElementById('statDown').innerText = down;
+                document.getElementById('statPaused').innerText = paused;
+                document.getElementById('statAvgResponse').innerText = responseCount > 0 ? `${Math.round(responseSum / responseCount)}ms` : '-';
+                document.getElementById('statAttention').innerText = down + paused;
+            }
+
+            function initCharts() {
+                const primary = themeColor('--color-primary');
+                const error = themeColor('--color-error');
+                const warning = themeColor('--color-warning');
+                const bgSurface = themeColor('--color-bg-surface');
+                const border = themeColor('--color-border');
+                const textSecondary = themeColor('--color-text-secondary');
+                const textMuted = themeColor('--color-text-muted');
+                const bgMain = themeColor('--color-bg-main');
+
+                const tooltipBase = {
+                    backgroundColor: bgSurface,
+                    titleColor: textSecondary,
+                    bodyColor: primary,
+                    borderColor: border,
+                    borderWidth: 1,
+                    padding: 10
+                };
+
+                // Seed with real counts (not [0,0,0]) — Chart.js's pie/doughnut arc interpolation
+                // divides by the previous total when animating; starting from an all-zero dataset
+                // produces a divide-by-zero that leaves every arc permanently collapsed to 0deg.
+                let initUp = 0, initDown = 0, initPaused = 0;
+                monitors.forEach(m => {
+                    const cls = classify(m);
+                    if (cls === 'UP') initUp++;
+                    else if (cls === 'DOWN') initDown++;
+                    else initPaused++;
+                });
+
+                statusPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Up', 'Down', 'Paused'],
+                        datasets: [{ data: [initUp, initDown, initPaused], backgroundColor: [primary, error, warning], borderColor: border, borderWidth: 2 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: textSecondary, font: { size: 12 }, boxWidth: 12, padding: 14 } },
+                            tooltip: tooltipBase
+                        }
+                    }
+                });
+
+                responseVerticalChart = new Chart(document.getElementById('responseVerticalChart').getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: [], datasets: [{ label: 'Response (ms)', data: [], backgroundColor: primary, borderRadius: 5, maxBarThickness: 18, categoryPercentage: 0.5, barPercentage: 0.8 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: tooltipBase },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textMuted, font: { size: 11 } } },
+                            y: { beginAtZero: true, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { size: 11 }, callback: v => v + 'ms' } }
+                        }
+                    }
+                });
+
+                uptimeHorizontalChart = new Chart(document.getElementById('uptimeHorizontalChart').getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: [], datasets: [{ label: 'Uptime %', data: [], backgroundColor: primary, borderRadius: 5, maxBarThickness: 18, categoryPercentage: 0.5, barPercentage: 0.8 }] },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: tooltipBase },
+                        scales: {
+                            x: { min: 0, max: 100, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { size: 11 }, callback: v => v + '%' } },
+                            y: { grid: { display: false }, ticks: { color: textSecondary, font: { size: 11 } } }
+                        }
+                    }
+                });
+
+                typeRadarChart = new Chart(document.getElementById('typeRadarChart').getContext('2d'), {
+                    type: 'radar',
+                    data: { labels: [], datasets: [{ label: 'Avg Uptime %', data: [], backgroundColor: `color-mix(in srgb, ${primary} 25%, transparent)`, borderColor: primary, pointBackgroundColor: primary, borderWidth: 2 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: tooltipBase },
+                        scales: {
+                            r: {
+                                min: 0, max: 100,
+                                angleLines: { color: `color-mix(in srgb, ${border} 60%, transparent)` },
+                                grid: { color: `color-mix(in srgb, ${border} 40%, transparent)` },
+                                pointLabels: { color: textSecondary, font: { size: 10 } },
+                                ticks: { display: false, backdropColor: 'transparent' }
+                            }
+                        }
+                    }
+                });
+
+                const gradient = document.getElementById('fleetTrendChart').getContext('2d').createLinearGradient(0, 0, 0, 220);
+                gradient.addColorStop(0, `color-mix(in srgb, ${primary} 35%, transparent)`);
+                gradient.addColorStop(1, `color-mix(in srgb, ${primary} 0%, transparent)`);
+
+                trendChart = new Chart(document.getElementById('fleetTrendChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Avg Response (ms)', data: [], borderColor: primary, borderWidth: 2.5,
+                            pointBackgroundColor: primary, pointBorderColor: bgMain, pointRadius: 3, tension: 0.35,
+                            fill: true, backgroundColor: gradient
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: tooltipBase },
+                        scales: {
+                            x: { grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { size: 11 } } },
+                            y: { grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { size: 11 }, callback: v => v + 'ms' } }
+                        }
+                    }
+                });
+            }
+
+            function updateCharts() {
+                let up = 0, down = 0, paused = 0;
+                monitors.forEach(m => {
+                    const cls = classify(m);
+                    if (cls === 'UP') up++;
+                    else if (cls === 'DOWN') down++;
+                    else paused++;
+                });
+
+                if (statusPieChart) {
+                    statusPieChart.data.datasets[0].data = [up, down, paused];
+                    statusPieChart.update('none');
+                }
+
+                const activeMonitors = monitors.filter(m => !m.is_paused);
+
+                if (responseVerticalChart) {
+                    responseVerticalChart.data.labels = activeMonitors.map(m => m.name);
+                    responseVerticalChart.data.datasets[0].data = activeMonitors.map(m => parseFloat(m.current_response) || 0);
+                    responseVerticalChart.update('none');
+                }
+
+                if (uptimeHorizontalChart) {
+                    uptimeHorizontalChart.data.labels = activeMonitors.map(m => m.name);
+                    uptimeHorizontalChart.data.datasets[0].data = activeMonitors.map(m => parseFloat(m.uptime_24h) || 0);
+                    uptimeHorizontalChart.data.datasets[0].backgroundColor = activeMonitors.map(m => classify(m) === 'DOWN' ? themeColor('--color-error') : themeColor('--color-primary'));
+                    uptimeHorizontalChart.update('none');
+                }
+
+                if (typeRadarChart) {
+                    const byType = {};
+                    monitors.forEach(m => {
+                        const t = (m.type || 'unknown').toUpperCase();
+                        const uptimePct = parseFloat(m.uptime_24h);
+                        if (!byType[t]) byType[t] = [];
+                        if (!Number.isNaN(uptimePct)) byType[t].push(uptimePct);
+                    });
+                    const labels = Object.keys(byType);
+                    const data = labels.map(t => {
+                        const vals = byType[t];
+                        return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+                    });
+                    typeRadarChart.data.labels = labels;
+                    typeRadarChart.data.datasets[0].data = data;
+                    typeRadarChart.update('none');
+                }
+
+                if (trendChart) {
+                    const merged = [];
+                    activeMonitors.forEach(m => (m.heartbeats || []).forEach(hb => merged.push(hb)));
+                    merged.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+                    const byTime = {};
+                    merged.forEach(hb => {
+                        if (!byTime[hb.time]) byTime[hb.time] = [];
+                        byTime[hb.time].push(hb.ping || 0);
+                    });
+                    const labels = Object.keys(byTime);
+                    const data = labels.map(t => {
+                        const vals = byTime[t];
+                        return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+                    });
+                    trendChart.data.labels = labels;
+                    trendChart.data.datasets[0].data = data;
+                    trendChart.update('none');
+                }
+            }
+
+            function renderCategoryCounts() {
+                const el = document.getElementById('categoryCounts');
+                if (!el) return;
+
+                const counts = {};
+                monitors.forEach(m => {
+                    const t = (m.type || 'unknown').toUpperCase();
+                    counts[t] = (counts[t] || 0) + 1;
+                });
+
+                const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                const maxCount = entries.length > 0 ? entries[0][1] : 1;
+
+                if (entries.length === 0) {
+                    el.innerHTML = `<p class="text-sm text-center text-[var(--color-text-muted)]">No monitors yet.</p>`;
+                    return;
+                }
+
+                el.innerHTML = entries.map(([type, count]) => {
+                    const pct = Math.max(8, Math.round((count / maxCount) * 100));
+                    return `
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono font-semibold text-[var(--color-text-secondary)] w-20 truncate shrink-0">${type}</span>
+                        <div class="flex-1 h-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-text-muted)_15%,transparent)] overflow-hidden">
+                            <div class="h-full rounded-full bg-[var(--color-primary)]" style="width:${pct}%"></div>
+                        </div>
+                        <span class="text-sm font-bold text-[var(--color-text-primary)] w-6 text-right shrink-0">${count}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            function buildAttentionRow(site, colorVar, label) {
+                return `
+                <a href="/dashboard?monitor=${site.id}"
+                    class="flex items-center justify-between gap-2.5 px-4 py-3 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)] border border-[color-mix(in_srgb,var(${colorVar})_30%,transparent)] rounded-xl transition-all">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-2 h-2 rounded-full shrink-0 bg-[var(${colorVar})]"></span>
+                        <span class="text-sm font-semibold text-[var(--color-text-primary)] truncate">${site.name}</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-[var(--color-text-secondary)] uppercase px-1.5 py-0.5 rounded bg-[var(--color-bg-main)] border border-[var(--color-border)] shrink-0">${site.type}</span>
+                </a>`;
+            }
+
+            function renderAttentionLists() {
+                const downList = document.getElementById('downList');
+                const pausedList = document.getElementById('pausedList');
+                const downEmpty = document.getElementById('downEmptyState');
+                const pausedEmpty = document.getElementById('pausedEmptyState');
+                if (!downList || !pausedList) return;
+
+                const down = monitors.filter(m => classify(m) === 'DOWN');
+                const paused = monitors.filter(m => classify(m) === 'PAUSED');
+
+                document.getElementById('downCountBadge').innerText = down.length;
+                document.getElementById('pausedCountBadge').innerText = paused.length;
+
+                downList.innerHTML = down.map(m => buildAttentionRow(m, '--color-error', 'Down')).join('');
+                downList.classList.toggle('hidden', down.length === 0);
+                downEmpty.classList.toggle('hidden', down.length > 0);
+
+                pausedList.innerHTML = paused.map(m => buildAttentionRow(m, '--color-warning', 'Paused')).join('');
+                pausedList.classList.toggle('hidden', paused.length === 0);
+                pausedEmpty.classList.toggle('hidden', paused.length > 0);
+            }
+
+            // ---- Kiosk Mode: fullscreen + auto-scroll top->bottom->top, looping ----
+            let kioskModeActive = false;
+            let kioskScrollIntervalSeconds = 30;
+            let kioskAnimationFrame = null;
+            let kioskSettingsLoaded = false;
+
+            async function loadKioskScrollInterval() {
+                if (!CURRENT_ORG_ID) return;
+                try {
+                    const res = await fetch('/api/eagle-eye-settings', { headers: { 'Accept': 'application/json' } });
+                    const json = await res.json();
+                    if (json && json.status && json.data.settings.autoscroll_interval_seconds) {
+                        kioskScrollIntervalSeconds = json.data.settings.autoscroll_interval_seconds;
+                    }
+                } catch (err) {
+                    console.error('Failed to load Eagle Eye kiosk settings', err);
+                } finally {
+                    kioskSettingsLoaded = true;
+                }
+            }
+
+            const KIOSK_TICK_MS = 200;
+
+            function runKioskScrollCycle() {
+                if (!kioskModeActive) return;
+
+                const scrollRoot = document.scrollingElement || document.documentElement;
+                const maxScroll = Math.max(0, scrollRoot.scrollHeight - window.innerHeight);
+                const durationMs = Math.max(5, kioskScrollIntervalSeconds) * 1000;
+                const startTime = Date.now();
+
+                kioskAnimationFrame = setInterval(() => {
+                    if (!kioskModeActive) { clearInterval(kioskAnimationFrame); return; }
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(1, elapsed / durationMs);
+                    window.scrollTo(0, maxScroll * progress);
+
+                    if (progress >= 1) {
+                        clearInterval(kioskAnimationFrame);
+                        window.scrollTo(0, 0);
+                        runKioskScrollCycle();
+                    }
+                }, KIOSK_TICK_MS);
+            }
+
+            function updateKioskModeButton() {
+                const label = document.getElementById('kioskModeLabel');
+                const btn = document.getElementById('kioskModeToggle');
+                if (!label || !btn) return;
+                label.innerText = kioskModeActive ? 'Exit Kiosk Mode' : 'Kiosk Mode';
+                btn.classList.toggle('text-[var(--color-primary)]', kioskModeActive);
+                btn.classList.toggle('border-[var(--color-primary)]', kioskModeActive);
+            }
+
+            async function toggleKioskMode() {
+                if (kioskModeActive) {
+                    stopKioskMode();
+                    if (document.fullscreenElement) {
+                        try { await document.exitFullscreen(); } catch (err) { /* ignore */ }
+                    }
+                    return;
+                }
+
+                if (!kioskSettingsLoaded) await loadKioskScrollInterval();
+
+                try {
+                    await document.documentElement.requestFullscreen();
+                } catch (err) {
+                    console.error('Failed to enter fullscreen', err);
+                }
+
+                kioskModeActive = true;
+                updateKioskModeButton();
+                runKioskScrollCycle();
+            }
+
+            function stopKioskMode() {
+                kioskModeActive = false;
+                if (kioskAnimationFrame) clearInterval(kioskAnimationFrame);
+                kioskAnimationFrame = null;
+                updateKioskModeButton();
+            }
+
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && kioskModeActive) {
+                    stopKioskMode();
+                }
+            });
+
+            async function handleLogout(event) {
+                if (event) event.preventDefault();
+                try {
+                    await fetch('/api/account/logout', { method: 'POST' });
+                } catch (err) {
+                    console.error('Logout request failed', err);
+                }
+                window.location.href = '/auth/login';
+            }
+        </script>
+</body>
+
+</html>

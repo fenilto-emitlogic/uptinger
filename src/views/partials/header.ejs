@@ -1,0 +1,361 @@
+<% /* Locals expected: user, orgs (list of memberships), currentOrg, page
+    ('dashboard'|'eagle-eye'|'org-settings'|'user-settings') */ var isGridView=(typeof page !=='undefined' &&
+    page==='eagle-eye' ); /* Lightweight text-avatar initials — no stored images. */ var userInitials=(function () { var
+    f=(typeof user !=='undefined' && user && user.first_name) ? user.first_name.trim().charAt(0) : '' ; var l=(typeof
+    user !=='undefined' && user && user.last_name) ? user.last_name.trim().charAt(0) : '' ; return ((f + l) || 'U'
+    ).toUpperCase(); })(); var orgPerms=(typeof currentOrg !=='undefined' && currentOrg && currentOrg.permissions) ||
+    []; /* Gates both the "Organization Settings" nav link below and (server-side, in settings.routes.ts) the
+    /settings/organization page itself — same hasPermission() (registered as an app.locals function in server.ts), so
+    the button and the page can't disagree. */ var canViewOrgSettings=typeof hasPermission==='function' &&
+    hasPermission(orgPerms, 'org.view' ); %>
+    <header
+        class="border-b border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-bg-surface)_70%,transparent)] backdrop-blur-xl sticky top-0 z-40">
+        <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
+            <!-- Left: Brand + Org Switcher -->
+            <div class="flex items-center space-x-4 shrink-0">
+                <div class="flex items-center">
+                    <img src="/logo.png" alt="Uptinger" class="h-14 w-14">
+                    <div class="flex items-baseline space-x-2">
+                        <span
+                            class="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-[var(--color-primary)] bg-clip-text text-transparent">
+                            Uptinger
+                        </span>
+                    </div>
+                </div>
+
+                <% if (currentOrg) { %>
+                    <div class="relative hidden sm:block" data-dropdown>
+                        <button type="button" data-dropdown-trigger id="groupFilterTrigger"
+                            class="flex items-center space-x-2.5 pl-3 pr-3 py-1.5 rounded-xl border transition-all max-w-[220px] bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] hover:bg-[var(--color-bg-surface)] border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors text-[var(--color-text-muted)]"
+                                id="groupFilterIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                            </svg>
+                            <span
+                                class="truncate text-xs font-bold transition-colors text-[var(--color-text-secondary)]"
+                                id="groupFilterLabel">All Groups</span>
+                            <svg class="w-3.5 h-3.5 flex-shrink-0 text-[var(--color-text-muted)]" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div data-dropdown-menu id="groupFilterMenu"
+                            class="absolute left-0 mt-2 w-64 max-h-[24rem] overflow-y-auto bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl shadow-2xl py-2 hidden z-50">
+                            <div
+                                class="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                                Filter by Group
+                            </div>
+                            <div class="px-2 pb-1" id="groupFilterOptions"></div>
+                        </div>
+                    </div>
+                    <% } %>
+            </div>
+
+            <% if (currentOrg) { %>
+                <!-- Middle: Monitor Search -->
+                <div class="flex-1 hidden md:flex justify-center">
+                    <div class="relative w-full max-w-md" id="headerSearchWrap">
+                        <svg class="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" id="headerSearchInput" autocomplete="off" placeholder="Search monitors..."
+                            class="w-full bg-[color-mix(in_srgb,var(--color-bg-main)_70%,transparent)] border border-[var(--color-border)] rounded-xl pl-9 pr-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-all">
+                        <div id="headerSearchDropdown"
+                            class="hidden absolute left-0 right-0 mt-2 max-h-96 overflow-y-auto bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl shadow-2xl py-2 z-50">
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+
+                    <!-- Right Side -->
+                    <div class="flex items-center space-x-3 shrink-0">
+                        <% if (currentOrg) { %>
+                            <a href="/monitors/new"
+                                class="hidden sm:flex items-center space-x-2 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-bg-main)] font-black text-xs py-2 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] active:scale-[0.98]">
+                                <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span>Add New Monitor</span>
+                            </a>
+                            <% } %>
+                                <!-- List / Grid view switch: List = /dashboard, Grid = /eagle-eye -->
+                                <div
+                                    class="flex items-center p-1 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+                                    <a href="/dashboard" title="List view"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg transition-all <%= !isGridView ? 'bg-[var(--color-primary)] text-[var(--color-bg-main)] shadow-md' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]' %>">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                                        </svg>
+                                    </a>
+                                    <a href="/eagle-eye" title="Grid view (Eagle Eye)"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg transition-all <%= isGridView ? 'bg-[var(--color-primary)] text-[var(--color-bg-main)] shadow-md' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]' %>">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 3v16.5A1.5 1.5 0 004.5 21H21M7.5 15.75V18M12 11.25V18M16.5 6.75V18M21 6.75L15 12.75l-3-3-5.25 5.25" />
+                                        </svg>
+                                    </a>
+                                </div>
+
+                                <!-- User Dropdown Menu -->
+                                <div class="relative" data-dropdown>
+                                    <button type="button" data-dropdown-trigger
+                                        class="flex items-center space-x-2.5 p-1.5 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)] hover:bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] transition-all text-[var(--color-text-primary)]">
+                                        <div
+                                            class="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center font-extrabold text-[10px] text-[var(--color-bg-main)] shadow-md">
+                                            <%= userInitials %>
+                                        </div>
+                                        <svg class="w-4 h-4 text-[var(--color-text-secondary)] transition-colors"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    <div data-dropdown-menu
+                                        class="absolute right-0 mt-2 w-56 bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-xl shadow-2xl py-1.5 hidden z-50">
+                                        <div
+                                            class="px-4 py-2 border-b border-[var(--color-bg-surface)] text-xs text-[var(--color-text-secondary)]">
+                                            Signed in as <span class="font-semibold text-[var(--color-text-primary)]">
+                                                <%= user ? user.first_name : 'Admin' %>
+                                            </span>
+                                        </div>
+                                        <a href="/settings/profile"
+                                            class="flex items-center px-4 py-2 text-xs text-[var(--color-text-secondary)] hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] hover:text-[var(--color-text-primary)]">
+                                            <svg class="w-4 h-4 mr-2 text-[var(--color-text-secondary)]" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                            </svg>
+                                            Profile Settings
+                                        </a>
+                                        <% if (canViewOrgSettings) { %>
+                                            <a href="/settings/organization"
+                                                class="flex items-center px-4 py-2 text-xs text-[var(--color-text-secondary)] hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] hover:text-[var(--color-text-primary)]">
+                                                <svg class="w-4 h-4 mr-2 text-[var(--color-text-secondary)]" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Organization Settings
+                                            </a>
+                                            <% } %>
+                                                <a href="/api/account/logout" onclick="handleLogout(event)"
+                                                    class="flex items-center px-4 py-2 text-xs text-[var(--color-error)] hover:bg-[var(--color-bg-surface)] hover:text-[var(--color-error)] border-t border-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)]">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                                    </svg>
+                                                    Logout
+                                                </a>
+                                    </div>
+                                </div>
+                    </div>
+        </div>
+    </header>
+
+    <script>
+        (function () {
+            const dropdowns = document.querySelectorAll('[data-dropdown]');
+            dropdowns.forEach(function (dropdown) {
+                const trigger = dropdown.querySelector('[data-dropdown-trigger]');
+                const menu = dropdown.querySelector('[data-dropdown-menu]');
+                if (!trigger || !menu) return;
+
+                trigger.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const isOpen = !menu.classList.contains('hidden');
+                    dropdowns.forEach(function (d) {
+                        const m = d.querySelector('[data-dropdown-menu]');
+                        if (m) m.classList.add('hidden');
+                    });
+                    if (!isOpen) menu.classList.remove('hidden');
+                });
+            });
+
+            document.addEventListener('click', function () {
+                dropdowns.forEach(function (d) {
+                    const m = d.querySelector('[data-dropdown-menu]');
+                    if (m) m.classList.add('hidden');
+                });
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    dropdowns.forEach(function (d) {
+                        const m = d.querySelector('[data-dropdown-menu]');
+                        if (m) m.classList.add('hidden');
+                    });
+                }
+            });
+        })();
+
+        // ---- Group filter (dashboard/eagle-eye only; harmless no-op elsewhere) ----
+        (function () {
+            const trigger = document.getElementById('groupFilterTrigger');
+            if (!trigger) return;
+
+            const label = document.getElementById('groupFilterLabel');
+            const optionsEl = document.getElementById('groupFilterOptions');
+            const currentGroupId = new URLSearchParams(location.search).get('group_id') || '';
+
+            const checkIcon = `
+            <svg class="w-4 h-4 text-[var(--color-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>`;
+
+            function optionRow(id, name, isSelected) {
+                return `
+                <button type="button" onclick="setGroupFilter('${id}', '${name.replace(/'/g, "\\'")}')"
+                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-sm font-semibold transition-all mb-0.5
+                        ${isSelected
+                        ? 'bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] text-[var(--color-primary)]'
+                        : 'border border-transparent text-[var(--color-text-primary)] hover:bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)]'}">
+                    <span class="truncate">${name}</span>
+                    ${isSelected ? checkIcon : ''}
+                </button>`;
+            }
+
+            function render(groups) {
+                const current = groups.find(g => String(g.id) === currentGroupId);
+                label.textContent = current ? current.name : 'All Groups';
+
+                const icon = document.getElementById('groupFilterIcon');
+                if (current) {
+                    trigger.classList.add('bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]', 'border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]');
+                    trigger.classList.remove('bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)]', 'border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]');
+                    label.classList.add('text-[var(--color-primary)]');
+                    label.classList.remove('text-[var(--color-text-secondary)]');
+                    icon.classList.add('text-[var(--color-primary)]');
+                    icon.classList.remove('text-[var(--color-text-muted)]');
+                }
+
+                optionsEl.innerHTML = optionRow('', 'All Groups', !current) +
+                    groups.map(g => optionRow(g.id, g.name, !!current && current.id === g.id)).join('');
+            }
+
+            fetch('/api/groups').then(r => r.json()).then(res => {
+                if (!res.status) return;
+                render(res.data.groups);
+            }).catch(() => { });
+        })();
+
+        window.setGroupFilter = function (groupId, name) {
+            const url = new URL(window.location.href);
+            if (groupId) url.searchParams.set('group_id', groupId);
+            else url.searchParams.delete('group_id');
+            window.location.href = url.toString();
+        };
+
+        // ---- Header monitor search (jump-to, with suggestion dropdown) ----
+        (function () {
+            const input = document.getElementById('headerSearchInput');
+            if (!input) return;
+
+            const wrap = document.getElementById('headerSearchWrap');
+            const dropdown = document.getElementById('headerSearchDropdown');
+
+            let allMonitors = [];
+            let loaded = false;
+
+            function loadMonitors() {
+                if (loaded) return Promise.resolve(allMonitors);
+                return fetch('/api/monitors').then(r => r.json()).then(res => {
+                    if (res.status && res.data && res.data.monitors) {
+                        allMonitors = res.data.monitors;
+                        loaded = true;
+                    }
+                    return allMonitors;
+                }).catch(() => []);
+            }
+
+            function statusMeta(m) {
+                if (m.is_paused) return { label: 'Paused', color: '--color-warning' };
+                if (m.status === 'ONLINE') return { label: 'Up', color: '--color-primary' };
+                return { label: 'Down', color: '--color-error' };
+            }
+
+            function closeDropdown() {
+                dropdown.classList.add('hidden');
+            }
+
+            function selectResult(id) {
+                closeDropdown();
+                input.value = '';
+                if (typeof window.selectMonitor === 'function') {
+                    window.selectMonitor(id);
+                } else {
+                    window.location.href = '/dashboard?monitor=' + id;
+                }
+            }
+
+            function render(matches, query) {
+                if (!matches.length) {
+                    dropdown.innerHTML = `<div class="px-4 py-6 text-center text-xs text-[var(--color-text-muted)]">No monitors match "${query}"</div>`;
+                    dropdown.classList.remove('hidden');
+                    return;
+                }
+
+                dropdown.innerHTML = matches.slice(0, 8).map(m => {
+                    const meta = statusMeta(m);
+                    return `
+                    <button type="button" data-id="${m.id}" class="header-search-item w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] transition-colors">
+                        <span class="w-2 h-2 rounded-full shrink-0 bg-[var(${meta.color})]"></span>
+                        <span class="flex-1 min-w-0">
+                            <span class="block text-sm font-semibold text-[var(--color-text-primary)] truncate">${m.name}</span>
+                            <span class="block text-[11px] text-[var(--color-text-muted)] truncate">${m.url || m.hostname || ''}</span>
+                        </span>
+                        <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] shrink-0">${m.type}</span>
+                    </button>`;
+                }).join('');
+                dropdown.classList.remove('hidden');
+
+                dropdown.querySelectorAll('.header-search-item').forEach(btn => {
+                    btn.addEventListener('click', () => selectResult(Number(btn.dataset.id)));
+                });
+            }
+
+            function runSearch() {
+                const query = input.value.trim().toLowerCase();
+                if (!query) { closeDropdown(); return; }
+                loadMonitors().then(monitors => {
+                    const matches = monitors.filter(m =>
+                        m.name.toLowerCase().includes(query) ||
+                        (m.url && m.url.toLowerCase().includes(query)) ||
+                        (m.hostname && m.hostname.toLowerCase().includes(query))
+                    );
+                    render(matches, input.value.trim());
+                });
+            }
+
+            let debounceTimer;
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(runSearch, 150);
+            });
+
+            input.addEventListener('focus', () => {
+                if (input.value.trim()) runSearch();
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') { closeDropdown(); input.blur(); }
+                if (e.key === 'Enter') {
+                    const first = dropdown.querySelector('.header-search-item');
+                    if (first) selectResult(Number(first.dataset.id));
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (wrap && !wrap.contains(e.target)) closeDropdown();
+            });
+        })();
+    </script>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Setup - Uptinger</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+</head>
+
+<body class="h-full text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+    <div class="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2">
+
+        <!-- Left Column: Setup Welcome Text & Hero -->
+        <div
+            class="relative flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-gradient-to-br from-[var(--color-bg-surface)] to-[var(--color-bg-main)] border-b lg:border-b-0 lg:border-r border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+            <div class="space-y-6 max-w-xl mx-auto lg:mx-0 w-full">
+                <!-- Uptinger Brand Logo & Badge -->
+                <div class="flex items-center">
+                    <img src="/logo.png" alt="Uptinger" class="h-14 w-14">
+                    <div class="flex items-baseline space-x-2">
+                        <span
+                            class="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-[var(--color-primary)] bg-clip-text text-transparent">
+                            Uptinger
+                        </span>
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-10 sm:pt-16">
+                    <h1
+                        class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-left text-[var(--color-text-primary)] tracking-tight leading-[72px]">
+                        Welcome to Uptinger <br /> <span class="text-[var(--color-primary)]">Self-Hosted</span>
+                    </h1>
+                    <p class="text-[var(--color-text-secondary)] text-base sm:text-lg leading-relaxed pt-2">
+                        Set up your organization administrator profile. Once completed, your database will be
+                        initialized for real-time endpoint, DNS, and database monitoring.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Steps list -->
+            <div
+                class="pt-8 sm:pt-12 space-y-4 border-t border-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)] mt-12 max-w-xl mx-auto lg:mx-0 w-full">
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="h-6 w-6 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary)] flex items-center justify-center flex-shrink-0 border border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)]">
+                        <span class="text-xs font-bold">1</span>
+                    </div>
+                    <span class="text-sm font-medium text-[var(--color-text-secondary)]">Create System Admin
+                        Account</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="h-6 w-6 rounded-full bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] flex items-center justify-center flex-shrink-0 border border-[var(--color-border)]">
+                        <span class="text-xs font-bold">2</span>
+                    </div>
+                    <span class="text-sm font-medium text-[var(--color-text-muted)]">Access Uptinger Dashboard</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Setup Form -->
+        <div class="p-8 sm:p-12 lg:p-16 flex flex-col justify-center overflow-y-auto bg-[var(--color-bg-surface)]">
+            <div class="max-w-md w-full mx-auto space-y-6">
+                <div class="mb-10">
+                    <h2 class="text-2xl font-semibold text-left text-[var(--color-text-primary)]">Initial Instance
+                        <span class="text-[var(--color-primary)]">Setup</span>
+                    </h2>
+                    <p class="text-sm text-[var(--color-text-secondary)] mt-2">Enter your organization and administrator
+                        details.</p>
+                </div>
+
+                <form id="setupForm" class="space-y-4" onsubmit="handleSetup(event)">
+                    <div>
+                        <label for="org_name"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">Organization
+                            Name</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-building text-base"></i>
+                            </div>
+                            <input type="text" id="org_name" name="org_name" required placeholder="Uptinger Inc."
+                                value="Uptinger Inc."
+                                class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="first_name"
+                                class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">First
+                                Name</label>
+                            <div class="relative">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                    <i class="fa-solid fa-user text-base"></i>
+                                </div>
+                                <input type="text" id="first_name" name="first_name" required placeholder="Admin"
+                                    class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="last_name"
+                                class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">Last
+                                Name</label>
+                            <div class="relative">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                    <i class="fa-solid fa-user text-base"></i>
+                                </div>
+                                <input type="text" id="last_name" name="last_name" required placeholder="User"
+                                    class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="email"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">Admin
+                            Email Address</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-envelope text-base"></i>
+                            </div>
+                            <input type="email" id="email" name="email" required placeholder="admin@uptinger.com"
+                                class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">Password</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-lock text-base"></i>
+                            </div>
+                            <input type="password" id="password" name="password" required placeholder="••••••••"
+                                oninput="checkPasswordRequirements()"
+                                class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="confirm_password"
+                            class="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)] mb-1.5">Confirm
+                            Password</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+                                <i class="fa-solid fa-shield-halved text-base"></i>
+                            </div>
+                            <input type="password" id="confirm_password" name="confirm_password" required
+                                placeholder="••••••••" oninput="checkPasswordRequirements()"
+                                class="w-full pl-10 pr-4 py-3 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition duration-200 text-sm">
+                        </div>
+                    </div>
+
+                    <div
+                        class="p-3.5 bg-[var(--color-bg-main)] border border-[var(--color-bg-surface)] rounded-xl space-y-1 text-xs text-[var(--color-text-secondary)]">
+                        <p class="font-medium text-[var(--color-text-secondary)] mb-1">Password Requirements:</p>
+                        <div class="grid grid-cols-2 gap-1">
+                            <div id="req-length" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>At
+                                    least 8 characters</span></div>
+                            <div id="req-upper" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>1
+                                    Uppercase letter</span></div>
+                            <div id="req-lower" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>1
+                                    Lowercase letter</span></div>
+                            <div id="req-number" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>1
+                                    Number</span></div>
+                            <div id="req-special" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>1
+                                    Special character</span></div>
+                            <div id="req-match" class="flex items-center space-x-1.5"><i
+                                    class="fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]"></i><span>Passwords
+                                    match</span></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submitBtn"
+                        class="w-full py-3.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-bg-main)] font-extrabold rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] transition duration-200 flex items-center justify-center space-x-2 disabled:opacity-75 disabled:cursor-not-allowed mt-2">
+                        <span id="btnText">Complete Setup</span>
+                        <i id="btnSpinner" class="fa-solid fa-spinner fa-spin text-lg text-[var(--color-bg-main)]"
+                            style="display: none;"></i>
+                    </button>
+                </form>
+
+                <p class="text-center text-xs text-[var(--color-text-muted)] pt-6">
+                    Uptinger &bull; Powered by Emitlogic Technologies Private Limited
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function checkPasswordRequirements() {
+            const pwd = document.getElementById('password').value;
+            const confirmPwd = document.getElementById('confirm_password').value;
+
+            const updateRule = (id, isValid) => {
+                const el = document.getElementById(id);
+                const icon = el.querySelector('i');
+                if (isValid) {
+                    el.classList.remove('text-[var(--color-text-secondary)]');
+                    el.classList.add('text-[var(--color-primary)]');
+                    icon.className = 'fa-solid fa-check text-[var(--color-primary)] text-xs';
+                } else {
+                    el.classList.remove('text-[var(--color-primary)]');
+                    el.classList.add('text-[var(--color-text-secondary)]');
+                    icon.className = 'fa-solid fa-circle text-[8px] text-[var(--color-text-muted)]';
+                }
+            };
+
+            updateRule('req-length', pwd.length >= 8);
+            updateRule('req-upper', /[A-Z]/.test(pwd));
+            updateRule('req-lower', /[a-z]/.test(pwd));
+            updateRule('req-number', /[0-9]/.test(pwd));
+            updateRule('req-special', /[@$!%*?&]/.test(pwd));
+            updateRule('req-match', pwd.length > 0 && pwd === confirmPwd);
+        }
+
+        async function handleSetup(event) {
+            event.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+
+            const org_name = document.getElementById('org_name').value.trim();
+            const first_name = document.getElementById('first_name').value.trim();
+            const last_name = document.getElementById('last_name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirm_password = document.getElementById('confirm_password').value;
+
+            if (password !== confirm_password) {
+                showToast('Password and Confirm Password do not match.', 'error');
+                return;
+            }
+
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            if (!passwordRegex.test(password)) {
+                showToast('Password must be at least 8 characters long and include upper, lower, number, and special character.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btnText.textContent = 'Completing setup...';
+            btnSpinner.style.display = 'inline-block';
+
+            try {
+                const response = await fetch('/api/setup/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ org_name, first_name, last_name, email, password, confirm_password })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    window.location.href = data.redirect || '/auth/login';
+                } else {
+                    showToast(data.error || 'Failed to complete setup.', 'error');
+                    btn.disabled = false;
+                    btnText.textContent = 'Complete Setup';
+                    btnSpinner.style.display = 'none';
+                }
+            } catch (err) {
+                showToast('Network error occurred during setup.', 'error');
+                btn.disabled = false;
+                btnText.textContent = 'Complete Setup';
+                btnSpinner.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

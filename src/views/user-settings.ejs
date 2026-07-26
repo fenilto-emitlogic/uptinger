@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+    <script src="/js/modal.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+
+    <%- include('partials/header', { user, orgs, currentOrg, page: 'user-settings' }) %>
+
+        <main class="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <button type="button"
+                onclick="if (document.referrer && document.referrer.indexOf(window.location.origin) === 0) { history.back() } else { window.location.href = '/dashboard' }"
+                class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Back
+            </button>
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">My Profile</h1>
+                <p class="text-sm text-[var(--color-text-secondary)]">Update your basic account information.</p>
+            </div>
+
+            <section
+                class="bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div id="avatarPreview"
+                        class="w-16 h-16 flex-shrink-0 rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center font-extrabold text-xl text-[var(--color-bg-main)] shadow-md">
+                        <%= ((profile && profile.first_name ? profile.first_name.charAt(0) : '' ) + (profile &&
+                            profile.last_name ? profile.last_name.charAt(0) : '' ) || 'U' ).toUpperCase() %>
+                    </div>
+                    <div class="text-xs text-[var(--color-text-muted)]">Your avatar is generated automatically from your
+                        name's initials — no image upload needed.</div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">First
+                            Name</label>
+                        <input id="firstNameInput" type="text" value="<%= profile ? profile.first_name : '' %>"
+                            class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm focus:outline-none focus:border-[var(--color-primary)]">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Last
+                            Name</label>
+                        <input id="lastNameInput" type="text" value="<%= profile ? profile.last_name : '' %>"
+                            class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm focus:outline-none focus:border-[var(--color-primary)]">
+                    </div>
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Email</label>
+                    <input type="email" value="<%= profile ? profile.email : '' %>" disabled
+                        class="w-full px-3 py-2 rounded-lg bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-sm text-[var(--color-text-muted)] cursor-not-allowed">
+                </div>
+                <button onclick="saveProfile()"
+                    class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save
+                    Changes</button>
+            </section>
+        </main>
+
+        <footer
+            class="border-t border-[var(--color-bg-surface)] py-4 text-center text-xs text-[var(--color-text-muted)]">
+            Uptinger &bull; Powered by Emitlogic Technologies Private Limited
+        </footer>
+
+        <script>
+            function updateAvatarPreview() {
+                const f = document.getElementById('firstNameInput').value.trim().charAt(0);
+                const l = document.getElementById('lastNameInput').value.trim().charAt(0);
+                document.getElementById('avatarPreview').textContent = ((f + l) || 'U').toUpperCase();
+            }
+            document.getElementById('firstNameInput').addEventListener('input', updateAvatarPreview);
+            document.getElementById('lastNameInput').addEventListener('input', updateAvatarPreview);
+
+            async function saveProfile() {
+                const first_name = document.getElementById('firstNameInput').value.trim();
+                const last_name = document.getElementById('lastNameInput').value.trim();
+                if (!first_name || !last_name) return showToast('First and last name are required', 'error');
+
+                const res = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ first_name, last_name })
+                });
+                const data = await res.json();
+                showToast(data.message, data.status ? 'success' : 'error');
+            }
+        </script>
+</body>
+
+</html>

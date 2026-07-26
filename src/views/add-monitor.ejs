@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+    <script src="/js/modal.js"></script>
+    <script src="/js/tag-input.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+
+    <%- include('partials/header', { user, orgs: (typeof orgs !=='undefined' ? orgs : []), currentOrg: (typeof
+        currentOrg !=='undefined' ? currentOrg : null), page: 'add-monitor' }) %>
+
+        <main class="flex-1 max-w-[1100px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <button type="button" onclick="history.back()"
+                class="flex items-center gap-1.5 mb-4 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Back
+            </button>
+            <div class="mb-6 space-y-1">
+                <h1 class="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
+                    <%= typeof monitor !=='undefined' && monitor ? 'Edit Monitor' : 'Add New Monitor' %>
+                </h1>
+                <p class="text-sm text-[var(--color-text-secondary)]">
+                    <% if (typeof monitor !=='undefined' && monitor) { %>
+                        Update the configuration for this monitor.
+                        <% } else { %>
+                            Configure a new endpoint or service to track its uptime and performance.
+                            <% } %>
+                </p>
+            </div>
+
+            <!-- Step indicator -->
+            <div class="flex items-center space-x-3 mb-6 text-xs font-bold">
+                <div id="stepIndicator1" class="flex items-center space-x-2 text-[var(--color-primary)]">
+                    <span
+                        class="w-6 h-6 rounded-full bg-[var(--color-primary)] text-[var(--color-bg-main)] flex items-center justify-center">1</span>
+                    <span>Choose Monitor Type</span>
+                </div>
+                <div class="flex-1 h-px bg-[var(--color-border)]"></div>
+                <div id="stepIndicator2" class="flex items-center space-x-2 text-[var(--color-text-muted)]">
+                    <span id="stepIndicator2Num"
+                        class="w-6 h-6 rounded-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] flex items-center justify-center">2</span>
+                    <span>Monitor Details</span>
+                </div>
+            </div>
+
+            <!-- STEP 1: Type selection cards -->
+            <div id="step1" class="space-y-6">
+                <div id="typeGroups" class="space-y-6">
+                    <p class="text-sm text-[var(--color-text-secondary)]">Loading monitor types&hellip;</p>
+                </div>
+            </div>
+
+            <!-- STEP 2: Form details -->
+            <div id="step2" class="hidden space-y-6">
+
+                <!-- Selected type summary card -->
+                <div id="selectedTypeCard"
+                    class="flex items-center justify-between bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-bg-surface))] border-2 border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] rounded-2xl px-5 py-4 shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary)_6%,transparent)]">
+                    <div class="flex items-center space-x-3">
+                        <span id="selectedTypeIcon"
+                            class="w-11 h-11 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_16%,transparent)] flex items-center justify-center shrink-0"></span>
+                        <div class="leading-tight">
+                            <p id="selectedTypeLabel" class="font-black text-[var(--color-text-primary)] text-sm"></p>
+                            <p id="selectedTypeDescription" class="text-[11px] text-[var(--color-text-secondary)]"></p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="goToStep(1)"
+                        class="flex items-center space-x-1.5 text-xs font-bold px-3.5 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.5-9.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z" />
+                        </svg>
+                        <span>Edit</span>
+                    </button>
+                </div>
+
+                <form id="monitorForm" onsubmit="saveMonitor(event)"
+                    class="bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-2xl space-y-6 text-xs">
+                    <input type="hidden" id="formType" value="">
+                    <input type="hidden" id="formMonitorId"
+                        value="<%= (typeof monitor !== 'undefined' && monitor) ? monitor.id : '' %>">
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Friendly
+                                Name</label>
+                            <input type="text" id="formName" required placeholder="e.g. My API Server"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Tags</label>
+                            <input type="text" id="formTags" placeholder="Production, Web"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                        <script>TagInput.mount('formTags');</script>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Group</label>
+                            <select id="formGroup"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]">
+                                <option value="">No group</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end gap-4 pb-2.5 text-[var(--color-text-secondary)]">
+                            <label class="flex items-center gap-1.5"><input type="checkbox" class="toggle-switch"
+                                    id="formNotifyDown" checked> Notify on Down</label>
+                            <label class="flex items-center gap-1.5"><input type="checkbox" class="toggle-switch"
+                                    id="formNotifyPaused"> Notify on Paused</label>
+                            <label class="flex items-center gap-1.5"><input type="checkbox" class="toggle-switch"
+                                    id="formNotifyRecovery" checked> Notify on Recovered</label>
+                        </div>
+                    </div>
+
+                    <div id="panelUrl" class="space-y-4">
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">URL</label>
+                            <input type="url" id="formUrl" placeholder="https://example.com"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                    </div>
+
+                    <div id="panelHostPort" class="hidden grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label id="hostLabel"
+                                class="block font-semibold text-[var(--color-text-secondary)] mb-1">Hostname
+                                / IP</label>
+                            <input type="text" id="formHostname" placeholder="e.g. 1.1.1.1 or db.example.com"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Port</label>
+                            <input type="number" id="formPort" placeholder="80"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                    </div>
+
+                    <div id="panelDns"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">DNS Specific Options</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Resolver
+                                    Server</label>
+                                <input type="text" id="formDnsResolver" placeholder="1.1.1.1 (Default)" value="1.1.1.1"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Resource
+                                    Record
+                                    Type</label>
+                                <select id="formDnsRrType"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]">
+                                    <option value="A" selected>A</option>
+                                    <option value="AAAA">AAAA</option>
+                                    <option value="CNAME">CNAME</option>
+                                    <option value="MX">MX</option>
+                                    <option value="TXT">TXT</option>
+                                    <option value="NS">NS</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelDb"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">Database Connection Details</h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Database
+                                    Name</label>
+                                <input type="text" id="formDbName" placeholder="main_db"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block font-semibold text-[var(--color-text-secondary)] mb-1">Username</label>
+                                <input type="text" id="formDbUser" placeholder="admin"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block font-semibold text-[var(--color-text-secondary)] mb-1">Password</label>
+                                <input type="password" id="formDbPass" placeholder="••••••••"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Connection String
+                                (optional, overrides fields above &mdash; MongoDB/Postgres)</label>
+                            <input type="text" id="formDbConnString" placeholder="mongodb://user:pass@host:27017/db"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                    </div>
+
+                    <div id="panelKeyword"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">Keyword Match</h4>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Keyword to look
+                                for
+                                in the response body</label>
+                            <input type="text" id="formKeyword" placeholder="e.g. success"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                        </div>
+                    </div>
+
+                    <div id="panelMqtt"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">MQTT Specific Options</h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-2">
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Topic
+                                    (optional
+                                    &mdash; subscribes to verify the broker accepts it)</label>
+                                <input type="text" id="formMqttTopic" placeholder="sensors/temperature"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block font-semibold text-[var(--color-text-secondary)] mb-1">Username</label>
+                                <input type="text" id="formMqttUser" placeholder="optional"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Password</label>
+                            <input type="password" id="formMqttPass" placeholder="optional"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div id="panelRabbitmq"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">RabbitMQ Specific Options</h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Queue
+                                    (optional
+                                    &mdash; verifies it exists)</label>
+                                <input type="text" id="formRabbitQueue" placeholder="my-queue"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block font-semibold text-[var(--color-text-secondary)] mb-1">Username</label>
+                                <input type="text" id="formRabbitUser" placeholder="guest"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block font-semibold text-[var(--color-text-secondary)] mb-1">Password</label>
+                                <input type="password" id="formRabbitPass" placeholder="guest"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelDocker"
+                        class="hidden space-y-4 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">Docker Specific Options</h4>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Container Name /
+                                ID</label>
+                            <input type="text" id="formContainerName" placeholder="my-app-container"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
+                            <p class="text-[11px] text-[var(--color-text-secondary)] mt-1">Checked against the local
+                                Docker daemon socket (/var/run/docker.sock). Leave blank to just check the daemon is
+                                reachable.</p>
+                        </div>
+                    </div>
+
+                    <div id="panelPush"
+                        class="hidden space-y-2 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">Passive Monitor</h4>
+                        <p class="text-[11px] text-[var(--color-text-secondary)]">This monitor type does not get
+                            actively checked. After saving, you'll get a unique heartbeat URL — hit it from your
+                            script/cron job (for Push) or update status manually from the monitor's detail view (for
+                            Manual).</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Interval
+                                (sec)</label>
+                            <input type="number" id="formInterval" min="10" max="86400" value="60"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retries</label>
+                            <input type="number" id="formRetries" min="0" max="10" value="3"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retry
+                                Interval</label>
+                            <input type="number" id="formRetryInterval" min="5" value="60"
+                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t border-[var(--color-bg-surface)]">
+                        <a href="/dashboard"
+                            class="px-5 py-2.5 rounded-xl text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] font-semibold transition-colors">
+                            Cancel
+                        </a>
+                        <button type="submit"
+                            class="px-6 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary)] text-[var(--color-bg-main)] font-black shadow-lg shadow-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] transition-all active:scale-[0.98]">
+                            <%= (typeof monitor !=='undefined' && monitor) ? 'Save Changes' : 'Save Monitor' %>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <footer
+            class="border-t border-[var(--color-bg-surface)] py-4 text-center text-xs text-[var(--color-text-muted)]">
+            Uptinger &bull; Powered by Emitlogic Technologies Private Limited
+        </footer>
+
+        <script>
+            const ICONS = {
+                globe: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M12 3c2.5 2.7 4 6.2 4 9s-1.5 6.3-4 9c-2.5-2.7-4-6.2-4-9s1.5-6.3 4-9z"/>',
+                search: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>',
+                plug: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V3m6 4V3m-8 8h10a1 1 0 011 1v1a5 5 0 01-5 5v3m-2-9v9m0 0H8m4 0h4"/>',
+                activity: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h4l2-7 4 14 2-7h6"/>',
+                network: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>',
+                box: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>',
+                upload: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 9l5-5 5 5M12 4v12"/>',
+                hand: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11V6a2 2 0 114 0v5m0-3a2 2 0 114 0v3m0-1a2 2 0 114 0v6a6 6 0 01-6 6h-2a6 6 0 01-5.3-3.2L5.5 13a1.8 1.8 0 013-2l.5.7"/>',
+                mail: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>',
+                radio: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12a2 2 0 100 4 2 2 0 000-4zM8.5 8.5a5 5 0 000 7m7-7a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8m12.8-12.8a9 9 0 010 12.8"/>',
+                inbox: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h4l2 3h6l2-3h4M5 5h14l2 7v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7l2-7z"/>',
+                zap: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>',
+                database: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>'
+            };
+
+            function iconSvg(name, cls) {
+                const path = ICONS[name] || ICONS.globe;
+                return `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24">${path}</svg>`;
+            }
+
+            let monitorTypes = {};
+            let selectedType = null;
+            const editingMonitor = <%- (typeof monitor !== 'undefined' && monitor) ? jsonScript(monitor) : 'null' %>;
+
+            function goToStep(step) {
+                document.getElementById('step1').classList.toggle('hidden', step !== 1);
+                document.getElementById('step2').classList.toggle('hidden', step !== 2);
+
+                const ind1 = document.getElementById('stepIndicator1');
+                const ind2 = document.getElementById('stepIndicator2');
+                const ind2Num = document.getElementById('stepIndicator2Num');
+
+                if (step === 1) {
+                    ind1.classList.add('text-[var(--color-primary)]');
+                    ind1.classList.remove('text-[var(--color-text-muted)]');
+                    ind2.classList.remove('text-[var(--color-primary)]');
+                    ind2.classList.add('text-[var(--color-text-muted)]');
+                    ind2Num.className = 'w-6 h-6 rounded-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] flex items-center justify-center';
+                } else {
+                    ind1.classList.remove('text-[var(--color-primary)]');
+                    ind1.classList.add('text-[var(--color-text-muted)]');
+                    ind2.classList.add('text-[var(--color-primary)]');
+                    ind2.classList.remove('text-[var(--color-text-muted)]');
+                    ind2Num.className = 'w-6 h-6 rounded-full bg-[var(--color-primary)] text-[var(--color-bg-main)] flex items-center justify-center';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+
+            function selectType(type) {
+                selectedType = type;
+                document.getElementById('formType').value = type.key;
+
+                document.getElementById('selectedTypeIcon').innerHTML = iconSvg(type.icon, 'w-5 h-5 text-[var(--color-primary)]');
+                document.getElementById('selectedTypeLabel').innerText = type.label;
+                document.getElementById('selectedTypeDescription').innerText = type.description || '';
+
+                onTypeChange(type.key);
+                goToStep(2);
+            }
+
+            function renderTypeGroups(grouped) {
+                const container = document.getElementById('typeGroups');
+                container.innerHTML = '';
+
+                Object.keys(grouped).forEach(category => {
+                    const section = document.createElement('div');
+
+                    const heading = document.createElement('h3');
+                    heading.className = 'text-[11px] font-black uppercase tracking-wider text-[var(--color-text-muted)] mb-2.5';
+                    heading.innerText = category;
+                    section.appendChild(heading);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+
+                    grouped[category].forEach(type => {
+                        const card = document.createElement('button');
+                        card.type = 'button';
+                        card.className = 'flex items-start space-x-3 text-left bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-xl p-4 hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-bg-surface))] transition-all active:scale-[0.98]';
+                        card.innerHTML = `
+                        <span class="w-10 h-10 rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] flex items-center justify-center shrink-0">
+                            ${iconSvg(type.icon, 'w-4.5 h-4.5 text-[var(--color-primary)]')}
+                        </span>
+                        <span class="flex flex-col">
+                            <span class="font-bold text-[var(--color-text-primary)] text-sm">${type.label}</span>
+                            <span class="text-[11px] text-[var(--color-text-secondary)] leading-snug mt-0.5">${type.description || ''}</span>
+                        </span>
+                    `;
+                        card.onclick = () => selectType(type);
+                        grid.appendChild(card);
+                    });
+
+                    section.appendChild(grid);
+                    container.appendChild(section);
+                });
+            }
+
+            fetch('/api/monitor-types')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status && res.data && res.data.types) {
+                        monitorTypes = res.data.types;
+                        renderTypeGroups(monitorTypes);
+
+                        if (editingMonitor) {
+                            const allTypes = Object.values(monitorTypes).flat();
+                            const matchedType = allTypes.find(t => t.key === editingMonitor.type) || { key: editingMonitor.type, label: editingMonitor.type, icon: 'globe', description: '' };
+                            selectType(matchedType);
+                            prefillEditForm(editingMonitor);
+                        }
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('typeGroups').innerHTML =
+                        '<p class="text-sm text-red-400">Failed to load monitor types.</p>';
+                });
+
+            fetch('/api/groups')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status && res.data && res.data.groups) {
+                        const select = document.getElementById('formGroup');
+                        select.innerHTML = '<option value="">No group</option>' +
+                            res.data.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+                        if (editingMonitor && editingMonitor.group_id) {
+                            select.value = String(editingMonitor.group_id);
+                        }
+                    }
+                })
+                .catch(() => { });
+
+            function prefillEditForm(m) {
+                const cfg = m.config || {};
+                document.getElementById('formName').value = m.name || '';
+                document.getElementById('formTags').value = (m.tags || []).join(', ');
+                if (window.TagInput && TagInput.setValues) TagInput.setValues('formTags', m.tags || []);
+                document.getElementById('formUrl').value = m.url || '';
+                document.getElementById('formHostname').value = m.hostname || '';
+                document.getElementById('formPort').value = m.port || '';
+                document.getElementById('formInterval').value = m.interval_seconds || 60;
+                document.getElementById('formNotifyDown').checked = !!m.notify_on_down;
+                document.getElementById('formNotifyPaused').checked = !!m.notify_on_paused;
+                document.getElementById('formNotifyRecovery').checked = !!m.notify_on_recovery;
+
+                document.getElementById('formDnsResolver').value = cfg.dns_resolve_server || '1.1.1.1';
+                document.getElementById('formDnsRrType').value = cfg.dns_rr_type || 'A';
+                document.getElementById('formDbName').value = cfg.db_name || '';
+                document.getElementById('formDbUser').value = cfg.db_user || '';
+                document.getElementById('formDbPass').value = cfg.db_password || '';
+                document.getElementById('formDbConnString').value = cfg.db_connection_string || '';
+                document.getElementById('formKeyword').value = cfg.keyword || '';
+                document.getElementById('formMqttTopic').value = cfg.mqtt_topic || '';
+                document.getElementById('formMqttUser').value = m.type === 'mqtt' ? (cfg.db_user || '') : '';
+                document.getElementById('formMqttPass').value = m.type === 'mqtt' ? (cfg.db_password || '') : '';
+                document.getElementById('formRabbitQueue').value = cfg.rabbitmq_queue || '';
+                document.getElementById('formRabbitUser').value = m.type === 'rabbitmq' ? (cfg.db_user || '') : '';
+                document.getElementById('formRabbitPass').value = m.type === 'rabbitmq' ? (cfg.db_password || '') : '';
+                document.getElementById('formContainerName').value = cfg.container_name || '';
+            }
+
+            const DEFAULT_PORTS = {
+                tcp: 80, ping: null, smtp: 25, mqtt: 1883, rabbitmq: 5672, websocket: 80,
+                mssql: 1433, mongodb: 27017, mysql: 3306, postgres: 5432, redis: 6379, dns: 53, docker: 2375
+            };
+
+            function onTypeChange(type) {
+                const dnsTypes = ['dns'];
+                const dbTypes = ['mssql', 'mongodb', 'mysql', 'postgres', 'redis'];
+                const hostPortTypes = ['tcp', 'ping', 'smtp', 'mqtt', 'rabbitmq', 'websocket', ...dbTypes, ...dnsTypes];
+                const urlTypes = ['http', 'http-keyword', 'docker', 'push', 'manual'];
+
+                document.getElementById('panelUrl').classList.toggle('hidden', !urlTypes.includes(type));
+                document.getElementById('panelHostPort').classList.toggle('hidden', !hostPortTypes.includes(type));
+                document.getElementById('panelDns').classList.toggle('hidden', !dnsTypes.includes(type));
+                document.getElementById('panelDb').classList.toggle('hidden', !dbTypes.includes(type));
+                document.getElementById('panelKeyword').classList.toggle('hidden', type !== 'http-keyword');
+                document.getElementById('panelMqtt').classList.toggle('hidden', type !== 'mqtt');
+                document.getElementById('panelRabbitmq').classList.toggle('hidden', type !== 'rabbitmq');
+                document.getElementById('panelDocker').classList.toggle('hidden', type !== 'docker');
+                document.getElementById('panelPush').classList.toggle('hidden', type !== 'push' && type !== 'manual');
+
+                const hostLabel = document.getElementById('hostLabel');
+                hostLabel.innerText = dnsTypes.includes(type) ? 'Domain Name' : 'Hostname / IP';
+
+                if (DEFAULT_PORTS[type] != null && !document.getElementById('formPort').value) {
+                    document.getElementById('formPort').value = DEFAULT_PORTS[type];
+                }
+            }
+
+            function saveMonitor(event) {
+                event.preventDefault();
+                const payload = {
+                    name: document.getElementById('formName').value,
+                    type: document.getElementById('formType').value,
+                    url: document.getElementById('formUrl').value,
+                    hostname: document.getElementById('formHostname').value,
+                    port: document.getElementById('formPort').value,
+                    interval_seconds: document.getElementById('formInterval').value,
+                    tags: document.getElementById('formTags').value,
+                    group_id: document.getElementById('formGroup').value || null,
+                    notify_on_down: document.getElementById('formNotifyDown').checked,
+                    notify_on_paused: document.getElementById('formNotifyPaused').checked,
+                    notify_on_recovery: document.getElementById('formNotifyRecovery').checked,
+                    dns_resolve_server: document.getElementById('formDnsResolver').value,
+                    dns_rr_type: document.getElementById('formDnsRrType').value,
+                    db_name: document.getElementById('formDbName').value,
+                    db_user: document.getElementById('formDbUser').value,
+                    db_password: document.getElementById('formDbPass').value,
+                    db_connection_string: document.getElementById('formDbConnString').value,
+                    keyword: document.getElementById('formKeyword').value,
+                    mqtt_topic: document.getElementById('formMqttTopic').value,
+                    container_name: document.getElementById('formContainerName').value,
+                    rabbitmq_queue: document.getElementById('formRabbitQueue').value
+                };
+
+                const type = payload.type;
+                if (type === 'mqtt') {
+                    payload.db_user = document.getElementById('formMqttUser').value;
+                    payload.db_password = document.getElementById('formMqttPass').value;
+                } else if (type === 'rabbitmq') {
+                    payload.db_user = document.getElementById('formRabbitUser').value;
+                    payload.db_password = document.getElementById('formRabbitPass').value;
+                }
+
+                const monitorId = document.getElementById('formMonitorId').value;
+                const url = monitorId ? `/api/monitors/${monitorId}` : '/api/monitors';
+                const method = monitorId ? 'PUT' : 'POST';
+
+                fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(r => r.json()).then(res => {
+                    if (res.status) {
+                        const m = res.data && res.data.monitor;
+                        if (!monitorId && m && m.type === 'push' && m.parsed_config && m.parsed_config.push_token) {
+                            const pushUrl = `${window.location.origin}/api/push/${m.id}/${m.parsed_config.push_token}`;
+                            window.prompt('Monitor created. Hit this URL from your script/cron job to send a heartbeat (append ?status=down to report failure):', pushUrl);
+                        }
+                        window.location.href = '/dashboard';
+                    } else {
+                        if (window.showToast) showToast(res.message || 'Failed to save monitor', 'error');
+                        else alert(res.message || 'Failed to save monitor');
+                    }
+                });
+            }
+        </script>
+</body>
+
+</html>

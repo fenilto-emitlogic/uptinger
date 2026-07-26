@@ -1,0 +1,19 @@
+services:
+  uptinger:
+    build: .
+    image: uptinger:latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4173}:4173"
+    env_file:
+      - .env
+    environment:
+      - PORT=4173
+    volumes:
+      - uptinger-data:/app/data
+    # Needed by the `ping` monitor type, which shells out to the system ping binary
+    cap_add:
+      - NET_RAW
+
+volumes:
+  uptinger-data:

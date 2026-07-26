@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en"
+    class="h-full text-[var(--color-text-primary)] selection:bg-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] selection:text-[var(--color-primary)] bg-[var(--color-bg-main)]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/toast.js"></script>
+    <script src="/js/modal.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-[var(--color-text-primary)] bg-[var(--color-bg-main)]">
+
+    <%- include('partials/header', { user, orgs, currentOrg, page: 'org-settings' }) %>
+
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <button type="button"
+                onclick="if (document.referrer && document.referrer.indexOf(window.location.origin) === 0) { history.back() } else { window.location.href = '/dashboard' }"
+                class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Back
+            </button>
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">Organization Settings</h1>
+                <p class="text-sm text-[var(--color-text-secondary)]">Manage <span class="font-semibold">
+                        <%= currentOrg.org_name %>
+                    </span> — members, roles and permissions.</p>
+            </div>
+
+            <!-- Tabs + content -->
+            <div class="flex flex-col sm:flex-row gap-6 items-start">
+                <div class="flex sm:flex-col gap-1 border-b sm:border-b-0 sm:border-r border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] sm:w-56 sm:shrink-0 overflow-x-auto sm:overflow-visible"
+                    id="tabBar">
+                    <button data-tab="general"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-primary)] border-b-2 sm:border-b-0 sm:border-r-2 border-[var(--color-primary)]">General</button>
+                    <button data-tab="members"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Members
+                        &amp; Access</button>
+                    <button data-tab="roles"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Roles</button>
+                    <button data-tab="groups"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Groups</button>
+                    <button data-tab="tags"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Tags</button>
+                    <button data-tab="mail"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Mail
+                        / SMTP</button>
+                    <button data-tab="email-templates"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Email
+                        Templates</button>
+                    <button data-tab="notifications"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Notifications</button>
+                    <button data-tab="eagle-eye"
+                        class="tab-btn shrink-0 sm:w-full text-left px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border-b-2 sm:border-b-0 sm:border-r-2 border-transparent">Eagle
+                        Eye</button>
+                </div>
+
+                <div class="flex-1 min-w-0 w-full space-y-6">
+                    <!-- General -->
+                    <section id="tab-general"
+                        class="tab-panel bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Organization
+                                Name</label>
+                            <div class="flex gap-2 max-w-md">
+                                <input id="orgNameInput" type="text" value="<%= currentOrg.org_name %>"
+                                    class="flex-1 px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm focus:outline-none focus:border-[var(--color-primary)]">
+                                <button onclick="saveOrgName()"
+                                    class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save</button>
+                            </div>
+                            <p class="text-xs text-[var(--color-text-muted)] mt-2">This application supports a single
+                                organization, set up during initial installation.</p>
+                        </div>
+                    </section>
+
+                    <!-- Members -->
+                    <section id="tab-members"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold">Members</h2>
+                            <button onclick="openInviteForm()"
+                                class="px-3.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-xs font-bold hover:opacity-90">+
+                                Invite User</button>
+                        </div>
+
+                        <!-- Step 1: invite form -->
+                        <div id="inviteForm"
+                            class="hidden grid grid-cols-1 sm:grid-cols-5 gap-2 p-4 rounded-xl bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+                            <input id="inviteEmail" type="email" placeholder="Email"
+                                class="sm:col-span-2 px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <input id="inviteFirstName" type="text" placeholder="First name (new users)"
+                                class="px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <input id="inviteLastName" type="text" placeholder="Last name (new users)"
+                                class="px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <select id="inviteRole"
+                                class="px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm"></select>
+                            <button onclick="submitInvite()"
+                                class="sm:col-span-5 mt-1 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Send
+                                Invite</button>
+                        </div>
+
+                        <!-- Step 2: credentials + group assignment, stays open until dismissed -->
+                        <div id="inviteSuccess"
+                            class="hidden space-y-4 p-4 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)]">
+                            <div>
+                                <h3 class="text-sm font-bold text-[var(--color-primary)]">User invited</h3>
+                                <p id="inviteSuccessEmail" class="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                                </p>
+                            </div>
+                            <div id="inviteCredentials" class="hidden">
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Temporary
+                                    Password</label>
+                                <div class="flex gap-2 max-w-md">
+                                    <input id="inviteTempPassword" type="text" readonly
+                                        class="flex-1 px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm font-mono">
+                                    <button onclick="copyTempPassword()"
+                                        class="px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-xs font-bold hover:border-[var(--color-primary)]">Copy
+                                        Password</button>
+                                </div>
+                                <p class="text-xs text-[var(--color-text-muted)] mt-1.5">Share this with the invitee
+                                    securely — it will not be shown again.</p>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Assign
+                                    to Groups</label>
+                                <div id="inviteGroupChecklist" class="flex flex-wrap gap-3 text-xs"></div>
+                            </div>
+                            <button onclick="finishInvite()"
+                                class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Done</button>
+                        </div>
+
+                        <div id="membersList"
+                            class="divide-y divide-[color-mix(in_srgb,var(--color-border)_40%,transparent)]"></div>
+                    </section>
+
+                    <!-- Roles -->
+                    <section id="tab-roles"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold">Roles &amp; Permissions</h2>
+                            <button onclick="openRoleForm()"
+                                class="px-3.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-xs font-bold hover:opacity-90">+
+                                New Role</button>
+                        </div>
+
+                        <div id="roleForm"
+                            class="hidden space-y-3 p-4 rounded-xl bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+                            <input type="hidden" id="roleFormId">
+                            <input id="roleFormName" type="text" placeholder="Role name"
+                                class="w-full max-w-xs px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <div id="roleFormPerms" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs"></div>
+                            <button onclick="submitRole()"
+                                class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save
+                                Role</button>
+                        </div>
+
+                        <div id="rolesList" class="space-y-2"></div>
+                    </section>
+
+                    <!-- Groups -->
+                    <section id="tab-groups"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold">Groups</h2>
+                            <button onclick="openGroupForm()"
+                                class="px-3.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-xs font-bold hover:opacity-90">+
+                                New Group</button>
+                        </div>
+                        <p class="text-xs text-[var(--color-text-muted)]">Group monitors (e.g. Website Group, VPS Group)
+                            and assign members access to only what they need.</p>
+
+                        <div id="groupForm"
+                            class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2 p-4 rounded-xl bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)]">
+                            <input type="hidden" id="groupFormId">
+                            <input id="groupFormName" type="text" placeholder="Group name"
+                                class="px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <input id="groupFormDescription" type="text" placeholder="Description"
+                                class="sm:col-span-2 px-3 py-2 rounded-lg bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            <button onclick="submitGroup()"
+                                class="sm:col-span-3 mt-1 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save
+                                Group</button>
+                        </div>
+
+                        <div id="groupsList" class="space-y-2"></div>
+                    </section>
+
+                    <!-- Tags -->
+                    <section id="tab-tags"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <h2 class="text-sm font-bold">Tags</h2>
+                        <p class="text-xs text-[var(--color-text-muted)]">Tags used across monitors. New tags can be
+                            created from the monitor form — deleting one here removes it everywhere and unassigns it
+                            from any monitors that had it.</p>
+
+                        <div id="tagsList" class="flex flex-wrap gap-2"></div>
+                    </section>
+
+                    <!-- Mail / SMTP -->
+                    <section id="tab-mail"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <h2 class="text-sm font-bold">Mail / SMTP Settings</h2>
+                        <p class="text-xs text-[var(--color-text-muted)]">Used to send monitor alert emails and user
+                            invites.</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Host</label>
+                                <input id="smtpHost" type="text" placeholder="smtp.example.com"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Port</label>
+                                <input id="smtpPort" type="number" placeholder="587"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Username</label>
+                                <input id="smtpUsername" type="text"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Password</label>
+                                <input id="smtpPassword" type="password" placeholder="(unchanged)"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Encryption</label>
+                                <select id="smtpEncryption"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                                    <option value="none">None</option>
+                                    <option value="starttls" selected>STARTTLS</option>
+                                    <option value="ssl">SSL/TLS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">From
+                                    Email</label>
+                                <input id="smtpFromEmail" type="email" placeholder="alerts@example.com"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">From
+                                    Name</label>
+                                <input id="smtpFromName" type="text" placeholder="Uptinger Alerts"
+                                    class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                            </div>
+                            <div class="flex items-end">
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox"
+                                        class="toggle-switch" id="smtpIsActive" checked> Active</label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="saveSmtp()"
+                                class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save
+                                Settings</button>
+                            <button onclick="sendTestEmail()"
+                                class="px-4 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm font-bold hover:border-[var(--color-primary)]">Send
+                                Test Email</button>
+                        </div>
+                    </section>
+
+                    <!-- Email Templates (standalone, sits below Mail / SMTP) -->
+                    <section id="tab-email-templates"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <h2 class="text-sm font-bold">Email Templates</h2>
+                        <p class="text-xs text-[var(--color-text-muted)]">Customize the emails sent for test messages,
+                            monitor alerts, password resets and invites. Changes are saved per template and can be
+                            reverted to the default design at any time.</p>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
+                            <div id="templateTypeList" class="space-y-1"></div>
+
+                            <div id="templateEditor" class="space-y-3 hidden">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 id="templateEditorLabel" class="text-sm font-bold"></h3>
+                                        <p id="templateEditorDescription"
+                                            class="text-xs text-[var(--color-text-muted)]"></p>
+                                    </div>
+                                    <span id="templateCustomBadge"
+                                        class="hidden text-xs font-bold px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary)] border border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)]">Customized</span>
+                                </div>
+
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Subject</label>
+                                    <input id="templateSubject" type="text"
+                                        class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm">
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label
+                                            class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">HTML
+                                            Body</label>
+                                        <span id="templateVarsHint"
+                                            class="text-xs text-[var(--color-text-muted)]"></span>
+                                    </div>
+                                    <textarea id="templateHtml" rows="14"
+                                        class="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-xs font-mono"></textarea>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="saveEmailTemplate()"
+                                        class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save
+                                        Template</button>
+                                    <button onclick="previewEmailTemplate()"
+                                        class="px-4 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm font-bold hover:border-[var(--color-primary)]">Preview</button>
+                                    <button onclick="sendTestEmailTemplate()"
+                                        class="px-4 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm font-bold hover:border-[var(--color-primary)]">Send
+                                        Test</button>
+                                    <button id="templateRevertBtn" onclick="revertEmailTemplate()"
+                                        class="px-4 py-2 rounded-lg bg-[color-mix(in_srgb,var(--color-error,#ef4444)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-error,#ef4444)_30%,transparent)] text-[var(--color-error,#ef4444)] text-sm font-bold hidden">Revert
+                                        to Default</button>
+                                </div>
+
+                                <div id="templatePreviewBox"
+                                    class="hidden border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-xl overflow-hidden">
+                                    <div
+                                        class="px-4 py-2 bg-[var(--color-bg-main)] border-b border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] text-xs">
+                                        <span class="text-[var(--color-text-muted)]">Subject:</span> <span
+                                            id="templatePreviewSubject" class="font-semibold"></span>
+                                    </div>
+                                    <iframe id="templatePreviewFrame" class="w-full bg-white"
+                                        style="height:480px;border:0;"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Notifications -->
+                    <section id="tab-notifications"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <h2 class="text-sm font-bold">Monitor Alert Rules</h2>
+                        <p class="text-xs text-[var(--color-text-muted)]">Choose which events trigger an email alert for
+                            each monitor.</p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr
+                                        class="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wide">
+                                        <th class="py-2">Monitor</th>
+                                        <th class="py-2 text-center">Down</th>
+                                        <th class="py-2 text-center">Paused</th>
+                                        <th class="py-2 text-center">Recovered</th>
+                                        <th class="py-2 text-center">Recipients</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notificationsList"
+                                    class="divide-y divide-[color-mix(in_srgb,var(--color-border)_40%,transparent)]">
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Eagle Eye -->
+                    <section id="tab-eagle-eye"
+                        class="tab-panel hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_50%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] rounded-2xl p-6 space-y-4">
+                        <h2 class="text-sm font-bold">Eagle Eye Kiosk Mode</h2>
+                        <p class="text-xs text-[var(--color-text-muted)]">Controls the interval used by the Eagle Eye
+                            page's Kiosk Mode toggle, which auto-scrolls the page from top to bottom and repeats.</p>
+
+                        <div class="max-w-xs">
+                            <label
+                                class="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">Auto-scroll
+                                Cycle Interval (seconds)</label>
+                            <div class="flex gap-2">
+                                <input id="eagleEyeScrollInterval" type="number" min="5" step="1" placeholder="30"
+                                    class="flex-1 px-3 py-2 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-sm focus:outline-none focus:border-[var(--color-primary)]">
+                                <button onclick="saveEagleEyeSettings()"
+                                    class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-bg-main)] text-sm font-bold hover:opacity-90">Save</button>
+                            </div>
+                            <p class="text-xs text-[var(--color-text-muted)] mt-2">Time to scroll from top to bottom
+                                before looping back to the top and starting again.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <footer
+            class="border-t border-[var(--color-bg-surface)] py-4 text-center text-xs text-[var(--color-text-muted)]">
+            Uptinger &bull; Powered by Emitlogic Technologies Private Limited
+        </footer>
+
+        <script>
+            const ORG_ID = <%- jsonScript(currentOrg.org_id) %>;
+            const PERMISSION_GROUPS = <%- jsonScript(permissionGroups) %>;
+        </script>
+        <script src="/js/org-settings.js"></script>
+</body>
+
+</html>

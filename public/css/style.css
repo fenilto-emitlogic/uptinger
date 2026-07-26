@@ -1,0 +1,110 @@
+:root {
+    /* Surface & Layout */
+    --color-bg-main: #050810;
+    --color-bg-surface: #1e293b;
+    --color-border: #334155;
+
+    /* Brand & Accents */
+    --color-primary: #06b6d4;
+    --color-primary-hover: #0891b2;
+    --color-secondary: #88EF60;
+
+    /* Typography */
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+
+    /* System / Status Signals */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg-main);
+    color: var(--color-text-primary);
+}
+
+/* Thin custom scrollbar: primary-colored thumb on a bg-main track */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary) var(--color-bg-main);
+}
+
+*::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--color-bg-main);
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary);
+    border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* Optional Light Mode Override Class */
+.light-theme {
+    --color-bg-main: #f8fafc;
+    --color-bg-surface: #ffffff;
+    --color-border: #e2e8f0;
+
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-secondary: #7c3aed;
+
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #64748b;
+    --color-text-muted: #94a3b8;
+}
+
+/* Slider-style checkbox toggle used throughout the app */
+input[type="checkbox"].toggle-switch {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 38px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background-color: var(--color-bg-main);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    vertical-align: middle;
+}
+
+input[type="checkbox"].toggle-switch::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: var(--color-text-secondary);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+input[type="checkbox"].toggle-switch:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+input[type="checkbox"].toggle-switch:checked::before {
+    transform: translateX(16px);
+    background-color: #ffffff;
+}
+
+input[type="checkbox"].toggle-switch:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
