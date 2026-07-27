@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../config/db.js';
 import { monitorModel, toDashboardSite } from '../../models/monitor.model.js';
 import { userGroupModel } from '../../models/user_group.model.js';
+import { groupModel } from '../../models/group.model.js';
 import { sendError, sendSuccess } from '../../utils/res.utils.js';
 import { authenticateTokenMiddelware, AuthenticatedRequest } from '../../middlewares/auth.middleware.js';
 import { attachOrgContext, requirePermission, OrgScopedRequest } from '../../middlewares/org.middleware.js';
@@ -55,6 +56,106 @@ router.get('/dashboard/live', requirePermission(PERMISSIONS.MONITOR_VIEW), (req:
     }
 });
 
+// GET /api/monitors/backup/export - Full backup of every monitor in the active org,
+// portable enough to recreate them all via /backup/import (same or another instance).
+// Must be declared before /:id so "backup" isn't parsed as an id.
+router.get('/backup/export', requirePermission(PERMISSIONS.MONITOR_VIEW_ALL), (req: OrgScopedRequest, res) => {
+    try {
+        if (!req.currentOrg) {
+            return sendError(res, 'You must belong to an organization to export monitors.', null, 400);
+        }
+        const monitors = monitorModel.findAll(req.currentOrg.org_id);
+        const groups = groupModel.findAllForOrg(req.currentOrg.org_id);
+        const groupNameById = new Map(groups.map(g => [g.id, g.name]));
+
+        const backup = {
+            exported_at: new Date().toISOString(),
+            org_id: req.currentOrg.org_id,
+            org_name: req.currentOrg.org_name,
+            monitors: monitors.map(m => ({
+                name: m.name,
+                type: m.type,
+                url: m.url,
+                hostname: m.hostname,
+                port: m.port,
+                interval_seconds: m.interval_seconds,
+                retry_interval: m.retry_interval,
+                max_retries: m.max_retries,
+                tags: m.parsed_tags,
+                group_name: m.group_id != null ? groupNameById.get(m.group_id) ?? null : null,
+                notify_on_down: Boolean(m.notify_on_down),
+                notify_on_paused: Boolean(m.notify_on_paused),
+                notify_on_recovery: Boolean(m.notify_on_recovery),
+                config: m.parsed_config
+            }))
+        };
+
+        return sendSuccess(res, 'Monitors exported successfully', backup);
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to export monitors', null, 500);
+    }
+});
+
+// POST /api/monitors/backup/import - Recreate monitors from a previously exported backup.
+// Each monitor in the payload is created fresh (never overwrites an existing monitor by
+// name/id) — importing the same backup twice produces duplicates, by design, since the
+// backup has no stable id to reconcile against once a monitor's original row is gone.
+router.post('/backup/import', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedRequest, res) => {
+    try {
+        if (!req.currentOrg) {
+            return sendError(res, 'You must belong to an organization to import monitors.', null, 400);
+        }
+
+        const monitors = Array.isArray(req.body?.monitors) ? req.body.monitors : null;
+        if (!monitors) {
+            return sendError(res, 'Backup file is missing a "monitors" array', null, 400);
+        }
+
+        const groups = groupModel.findAllForOrg(req.currentOrg.org_id);
+        const groupIdByName = new Map(groups.map(g => [g.name, g.id]));
+        const createdBy = req.user && 'userId' in req.user ? req.user.userId : undefined;
+
+        let imported = 0;
+        const errors: string[] = [];
+
+        for (const item of monitors) {
+            try {
+                if (!item || !item.name) {
+                    errors.push('Skipped an entry with no name');
+                    continue;
+                }
+                monitorModel.create({
+                    name: item.name,
+                    type: item.type || 'http',
+                    url: item.url || '',
+                    hostname: item.hostname || '',
+                    port: item.port || undefined,
+                    interval_seconds: item.interval_seconds || 60,
+                    retry_interval: item.retry_interval || 60,
+                    max_retries: item.max_retries != null ? item.max_retries : 3,
+                    tags: Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''),
+                    config: item.config || {},
+                    org_id: req.currentOrg.org_id,
+                    group_id: item.group_name ? groupIdByName.get(item.group_name) ?? null : null,
+                    created_by: createdBy,
+                    notify_on_down: item.notify_on_down !== false,
+                    notify_on_paused: Boolean(item.notify_on_paused),
+                    notify_on_recovery: item.notify_on_recovery !== false
+                });
+                imported++;
+            } catch (itemErr: any) {
+                errors.push(`"${item?.name || 'unknown'}": ${itemErr.message || 'failed to import'}`);
+            }
+        }
+
+        uptinger.resyncNow();
+
+        return sendSuccess(res, `Imported ${imported} of ${monitors.length} monitor(s)`, { imported, total: monitors.length, errors });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to import monitors', null, 500);
+    }
+});
+
 // GET /api/monitors/:id - Single monitor (scoped to the active org and, for
 // non-admins, to their assigned Groups)
 router.get('/:id', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
@@ -88,6 +189,8 @@ router.post('/', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedR
             hostname,
             port,
             interval_seconds,
+            retries,
+            retry_interval,
             tags,
             // Type-specific config fields
             dns_resolve_server,
@@ -167,6 +270,8 @@ router.post('/', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedR
             hostname: hostname || '',
             port: port ? parseInt(port) : undefined,
             interval_seconds: interval_seconds ? parseInt(interval_seconds) : 60,
+            retry_interval: retry_interval ? parseInt(retry_interval) : 60,
+            max_retries: retries !== undefined && retries !== '' ? parseInt(retries) : 3,
             tags: Array.isArray(tags) ? tags.join(', ') : (tags || ''),
             config: configPayload,
             org_id: req.currentOrg.org_id,
@@ -245,6 +350,8 @@ router.put('/:id', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: OrgScopedR
             hostname: req.body.hostname,
             port: req.body.port ? parseInt(req.body.port) : undefined,
             interval_seconds: req.body.interval_seconds ? parseInt(req.body.interval_seconds) : undefined,
+            retry_interval: req.body.retry_interval ? parseInt(req.body.retry_interval) : undefined,
+            max_retries: req.body.retries !== undefined && req.body.retries !== '' ? parseInt(req.body.retries) : undefined,
             tags: Array.isArray(req.body.tags) ? req.body.tags.join(', ') : req.body.tags,
             group_id: req.body.group_id !== undefined ? (req.body.group_id ? parseInt(req.body.group_id) : null) : undefined,
             notify_on_down: req.body.notify_on_down,

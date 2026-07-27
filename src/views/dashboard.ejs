@@ -360,9 +360,24 @@
                                         </svg>
                                         <span>Heartbeat Event Logs</span>
                                     </h3>
-                                    <div class="flex items-center space-x-3">
+                                    <div class="flex items-center space-x-3 flex-wrap gap-y-2">
                                         <span class="text-xs text-[var(--color-text-muted)] font-mono">Live checks
                                             active</span>
+                                        <div class="relative">
+                                            <select id="logsStatusFilter" onchange="renderLogsTable()"
+                                                class="appearance-none bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 pr-7 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
+                                                <option value="ALL" selected>All statuses</option>
+                                                <option value="200 OK">Up (200 OK)</option>
+                                                <option value="ERROR">Down (Error)</option>
+                                            </select>
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-text-secondary)] absolute right-2.5 top-2 pointer-events-none"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                        <input type="date" id="logsDateFilter" onchange="renderLogsTable()"
+                                            class="bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
                                         <div class="relative">
                                             <select id="logsLimitFilter" onchange="renderLogsTable()"
                                                 class="appearance-none bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 pr-7 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
@@ -984,44 +999,81 @@
                 }
 
                 renderLogsTable();
-
-                if (chartInstance && m.heartbeats && m.heartbeats.length > 0) {
-                    const lastHb = m.heartbeats[m.heartbeats.length - 1];
-                    const isDown = lastHb ? lastHb.status !== 'up' : (m.status !== 'ONLINE');
-                    const lineColorVar = isDown ? '--color-error' : '--color-primary';
-                    const lineColor = themeColor(lineColorVar);
-                    const ctx = chartInstance.ctx;
-                    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-                    gradient.addColorStop(0, `color-mix(in srgb, ${lineColor} 35%, transparent)`);
-                    gradient.addColorStop(1, `color-mix(in srgb, ${lineColor} 0%, transparent)`);
-
-                    chartInstance.data.labels = m.heartbeats.map(h => h.time);
-                    chartInstance.data.datasets[0].data = m.heartbeats.map(h => h.ping);
-                    chartInstance.data.datasets[0].borderColor = lineColor;
-                    chartInstance.data.datasets[0].pointBackgroundColor = lineColor;
-                    chartInstance.data.datasets[0].pointHoverBackgroundColor = lineColor;
-                    chartInstance.data.datasets[0].backgroundColor = gradient;
-                    chartInstance.update();
-
-                    const legendDot = document.getElementById('chartLegendDot');
-                    if (legendDot) {
-                        legendDot.className = `w-3 h-3 rounded bg-[var(${lineColorVar})] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(${lineColorVar})_80%,transparent)]`;
-                    }
-                }
-
+                updateResponseChart(m);
                 updateUptimePieChart(m);
+            }
+
+            const CHART_RANGE_MS = {
+                '1h': 60 * 60 * 1000,
+                '6h': 6 * 60 * 60 * 1000,
+                '24h': 24 * 60 * 60 * 1000,
+                '7d': 7 * 24 * 60 * 60 * 1000
+            };
+
+            function getChartHeartbeats(m) {
+                const heartbeats = m.heartbeats || [];
+                const filterEl = document.getElementById('chartTimeFilter');
+                const range = filterEl ? filterEl.value : 'Recent';
+                const rangeMs = CHART_RANGE_MS[range];
+                if (!rangeMs) return heartbeats; // 'Recent' - show everything we have
+
+                const cutoff = Date.now() - rangeMs;
+                return heartbeats.filter(h => h.timestamp && new Date(h.timestamp).getTime() >= cutoff);
+            }
+
+            function updateResponseChart(m) {
+                if (!chartInstance || !m || !m.heartbeats || m.heartbeats.length === 0) return;
+
+                const filtered = getChartHeartbeats(m);
+
+                const lastHb = m.heartbeats[m.heartbeats.length - 1];
+                const isDown = lastHb ? lastHb.status !== 'up' : (m.status !== 'ONLINE');
+                const lineColorVar = isDown ? '--color-error' : '--color-primary';
+                const lineColor = themeColor(lineColorVar);
+                const ctx = chartInstance.ctx;
+                const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+                gradient.addColorStop(0, `color-mix(in srgb, ${lineColor} 35%, transparent)`);
+                gradient.addColorStop(1, `color-mix(in srgb, ${lineColor} 0%, transparent)`);
+
+                chartInstance.data.labels = filtered.map(h => h.time);
+                chartInstance.data.datasets[0].data = filtered.map(h => h.ping);
+                chartInstance.data.datasets[0].borderColor = lineColor;
+                chartInstance.data.datasets[0].pointBackgroundColor = lineColor;
+                chartInstance.data.datasets[0].pointHoverBackgroundColor = lineColor;
+                chartInstance.data.datasets[0].backgroundColor = gradient;
+                chartInstance.update();
+
+                const legendDot = document.getElementById('chartLegendDot');
+                if (legendDot) {
+                    legendDot.className = `w-3 h-3 rounded bg-[var(${lineColorVar})] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(${lineColorVar})_80%,transparent)]`;
+                }
+            }
+
+            function getFilteredLogs() {
+                const m = monitors.find(x => x.id === activeId);
+                const limitEl = document.getElementById('logsLimitFilter');
+                const limit = limitEl ? parseInt(limitEl.value, 10) : 20;
+                const statusEl = document.getElementById('logsStatusFilter');
+                const statusFilter = statusEl ? statusEl.value : 'ALL';
+                const dateEl = document.getElementById('logsDateFilter');
+                const dateFilter = dateEl ? dateEl.value : '';
+
+                let logs = (m && m.logs ? m.logs : []);
+                if (statusFilter !== 'ALL') {
+                    logs = logs.filter(log => log.status === statusFilter);
+                }
+                if (dateFilter) {
+                    logs = logs.filter(log => log.timestamp && log.timestamp.slice(0, 10) === dateFilter);
+                }
+                return logs.slice(0, limit);
             }
 
             function renderLogsTable() {
                 const tbody = document.getElementById('logsTableBody');
                 if (!tbody) return;
 
-                const m = monitors.find(x => x.id === activeId);
-                const limitEl = document.getElementById('logsLimitFilter');
-                const limit = limitEl ? parseInt(limitEl.value, 10) : 20;
-
                 tbody.innerHTML = '';
-                const logs = (m && m.logs ? m.logs : []).slice(0, limit);
+                const logs = getFilteredLogs();
 
                 if (logs.length > 0) {
                     logs.forEach(log => {
@@ -1032,7 +1084,7 @@
                             ? 'bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] text-[var(--color-error)] border border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]'
                             : 'bg-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] text-[var(--color-primary)] border border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]';
                         tr.innerHTML = `
-                        <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${log.timestamp}</td>
+                        <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</td>
                         <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${log.status}</span></td>
                         <td class="py-2.5 px-4 text-[var(--color-text-primary)]">${log.ms} ms</td>
                         <td class="py-2.5 px-4 text-[var(--color-text-secondary)] truncate max-w-xs">${log.msg}</td>
@@ -1136,7 +1188,9 @@
             }
 
             function updateChartFilter() {
-                openToast(`Chart updated to show timeframe: ${document.getElementById('chartTimeFilter').value}`);
+                const m = monitors.find(x => x.id === activeId);
+                if (!m) return;
+                updateResponseChart(m);
             }
 
             async function handleLogout(event) {

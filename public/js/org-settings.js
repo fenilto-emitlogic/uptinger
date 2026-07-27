@@ -32,9 +32,9 @@
         btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
 
-    // Deep-link support: /settings/organization#members, #roles, #groups, #mail, #notifications, #eagle-eye
+    // Deep-link support: /settings/organization#members, #roles, #groups, #mail, #notifications, #eagle-eye, #backup
     const initialTab = (location.hash || '').replace('#', '');
-    if (['members', 'roles', 'groups', 'tags', 'mail', 'email-templates', 'notifications', 'eagle-eye'].includes(initialTab)) {
+    if (['members', 'roles', 'groups', 'tags', 'mail', 'email-templates', 'notifications', 'eagle-eye', 'backup'].includes(initialTab)) {
         activateTab(initialTab);
     }
 
@@ -69,17 +69,17 @@
         if (!membersRes.status) { list.innerHTML = '<div class="py-6 text-sm text-[var(--color-text-muted)]">Failed to load members.</div>'; return; }
 
         list.innerHTML = membersRes.data.members.map(m => `
-            <div class="flex items-center justify-between py-3" data-member-row="${m.user_id}">
-                <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between gap-3 py-3 flex-wrap" data-member-row="${m.user_id}">
+                <div class="flex items-center gap-3 min-w-0">
                     <div class="w-9 h-9 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] text-[var(--color-primary)] text-xs font-bold flex items-center justify-center shrink-0">
                         ${(m.first_name?.[0] || '').toUpperCase()}${(m.last_name?.[0] || '').toUpperCase()}
                     </div>
-                    <div>
-                        <div class="text-sm font-semibold">${m.first_name} ${m.last_name}</div>
-                        <div class="text-xs text-[var(--color-text-muted)]">${m.email}</div>
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold truncate">${m.first_name} ${m.last_name}</div>
+                        <div class="text-xs text-[var(--color-text-muted)] truncate">${m.email}</div>
                     </div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap">
                     <!-- Read-only preview of the member's current role; changing it requires Edit -->
                     <span class="px-2.5 py-1 rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] text-[var(--color-primary)] text-xs font-semibold" data-role-preview>${m.role_name || 'No role'}</span>
                     <select class="hidden px-2 py-1.5 rounded-lg bg-[var(--color-bg-main)] border border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] text-xs" data-role-select>
@@ -600,5 +600,44 @@
 
         const { data } = await api(`/api/email-templates/${activeTemplateType}/send-test`, { method: 'POST', body: JSON.stringify({ subject, html }) });
         showToast(data.message, data.status ? 'success' : 'error');
+    };
+
+    // ---- Backup ----
+    window.exportMonitorsBackup = async function () {
+        const { ok, data } = await api('/api/monitors/backup/export');
+        if (!ok || !data.status) return showToast(data.message || 'Failed to export monitors', 'error');
+
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const datePart = new Date().toISOString().slice(0, 10);
+        link.download = `${(data.data.org_name || 'uptinger').replace(/[^a-z0-9]+/gi, '-')}-monitors-backup-${datePart}.json`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        showToast(`Exported ${data.data.monitors.length} monitor(s)`, 'success');
+    };
+
+    window.importMonitorsBackup = async function () {
+        const fileInput = document.getElementById('backupFileInput');
+        const resultEl = document.getElementById('backupImportResult');
+        const file = fileInput.files[0];
+        if (!file) return showToast('Choose a backup file first', 'error');
+
+        let parsed;
+        try {
+            parsed = JSON.parse(await file.text());
+        } catch {
+            return showToast('That file is not valid JSON', 'error');
+        }
+
+        const { data } = await api('/api/monitors/backup/import', { method: 'POST', body: JSON.stringify(parsed) });
+        showToast(data.message, data.status ? 'success' : 'error');
+
+        if (data.status && resultEl) {
+            const errs = data.data.errors || [];
+            resultEl.className = 'text-xs mt-2 ' + (errs.length ? 'text-[var(--color-error)]' : 'text-[var(--color-text-muted)]');
+            resultEl.textContent = errs.length ? `Imported ${data.data.imported}/${data.data.total}. Issues: ${errs.join('; ')}` : `Imported ${data.data.imported}/${data.data.total} monitors.`;
+        }
+        fileInput.value = '';
     };
 })();

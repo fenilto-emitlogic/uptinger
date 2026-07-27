@@ -763,7 +763,10 @@ class UptingerEngine {
     private async recordResult(monitor: IFMonitorParsed, result: ICheckResult, priorFailCount: number, retriesExhausted: boolean): Promise<void> {
         const isDown = !result.ok && retriesExhausted;
         const isRetrying = !result.ok && !isDown;
-        const status = result.ok ? 'ONLINE' : 'OFFLINE';
+        // Only flip the persisted status to OFFLINE once retries are exhausted — while a
+        // retry is still in progress, keep the monitor's stored status as its prior value
+        // so the Up/Down filter doesn't flag it as down before it's actually considered down.
+        const status = result.ok ? 'ONLINE' : (isRetrying ? monitor.status : 'OFFLINE');
         const priorStatus = monitor.status;
 
         const msg = isRetrying

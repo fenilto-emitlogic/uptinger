@@ -14,6 +14,14 @@ function encryptSecrets(config: Record<string, any>): Record<string, any> {
     return out;
 }
 
+// SQLite's CURRENT_TIMESTAMP stores UTC as "YYYY-MM-DD HH:MM:SS" with no timezone
+// marker, so `new Date(...)` on the client would misread it as local time. Normalize
+// to a proper UTC ISO string ("...T...Z") before it ever reaches the client.
+function toUtcIso(sqliteTimestamp: string): string {
+    if (sqliteTimestamp.includes('T') || sqliteTimestamp.endsWith('Z')) return sqliteTimestamp;
+    return sqliteTimestamp.replace(' ', 'T') + 'Z';
+}
+
 function decryptSecrets(config: Record<string, any>): Record<string, any> {
     const out = { ...config };
     for (const field of SECRET_CONFIG_FIELDS) {
@@ -204,6 +212,8 @@ class MonitorModel {
                 hostname = COALESCE(?, hostname),
                 port = COALESCE(?, port),
                 interval_seconds = COALESCE(?, interval_seconds),
+                retry_interval = COALESCE(?, retry_interval),
+                max_retries = COALESCE(?, max_retries),
                 tags = COALESCE(?, tags),
                 group_id = ?,
                 notify_on_down = COALESCE(?, notify_on_down),
@@ -221,6 +231,8 @@ class MonitorModel {
             data.hostname ?? null,
             data.port ?? null,
             data.interval_seconds ?? null,
+            data.retry_interval ?? null,
+            data.max_retries ?? null,
             data.tags ?? null,
             data.group_id === undefined ? existing.group_id ?? null : data.group_id,
             data.notify_on_down === undefined ? null : (data.notify_on_down ? 1 : 0),
@@ -273,7 +285,7 @@ class MonitorModel {
 
         const logs = hbs.map(h => ({
             id: h.id,
-            timestamp: h.timestamp ? h.timestamp.replace('T', ' ').slice(0, 19) : '',
+            timestamp: h.timestamp ? toUtcIso(h.timestamp) : '',
             status: h.status_code === 200 ? '200 OK' : 'ERROR',
             ms: h.ping_ms,
             type: 'heartbeat',
@@ -283,7 +295,8 @@ class MonitorModel {
         const heartbeats = hbs.reverse().map(h => ({
             status: h.status === 'ONLINE' ? 'up' : 'down',
             ping: h.ping_ms,
-            time: h.timestamp ? h.timestamp.slice(11, 16) : '00:00'
+            time: h.timestamp ? new Date(toUtcIso(h.timestamp)).toISOString().slice(11, 16) : '00:00',
+            timestamp: h.timestamp ? toUtcIso(h.timestamp) : null
         }));
 
         return {

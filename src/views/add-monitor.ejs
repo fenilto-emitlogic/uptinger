@@ -481,6 +481,8 @@
                 document.getElementById('formHostname').value = m.hostname || '';
                 document.getElementById('formPort').value = m.port || '';
                 document.getElementById('formInterval').value = m.interval_seconds || 60;
+                document.getElementById('formRetries').value = (m.max_retries != null) ? m.max_retries : 3;
+                document.getElementById('formRetryInterval').value = m.retry_interval || 60;
                 document.getElementById('formNotifyDown').checked = !!m.notify_on_down;
                 document.getElementById('formNotifyPaused').checked = !!m.notify_on_paused;
                 document.getElementById('formNotifyRecovery').checked = !!m.notify_on_recovery;
@@ -539,6 +541,8 @@
                     hostname: document.getElementById('formHostname').value,
                     port: document.getElementById('formPort').value,
                     interval_seconds: document.getElementById('formInterval').value,
+                    retries: document.getElementById('formRetries').value,
+                    retry_interval: document.getElementById('formRetryInterval').value,
                     tags: document.getElementById('formTags').value,
                     group_id: document.getElementById('formGroup').value || null,
                     notify_on_down: document.getElementById('formNotifyDown').checked,
