@@ -144,18 +144,18 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-6">
                         <div
-                            class="sm:col-span-8 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            class="sm:col-span-8 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
                             <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Fleet-wide Response Time
                                 Trend</h2>
-                            <div class="relative h-56 w-full">
+                            <div class="relative flex-1 min-h-96 w-full">
                                 <canvas id="fleetTrendChart"></canvas>
                             </div>
                         </div>
 
                         <div
-                            class="sm:col-span-4 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                            class="sm:col-span-4 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
                             <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Status Distribution</h2>
-                            <div class="relative h-56 w-full">
+                            <div class="relative flex-1 w-full">
                                 <canvas id="statusPieChart"></canvas>
                             </div>
                         </div>
@@ -173,7 +173,7 @@
                         <div
                             class="sm:col-span-8 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
                             <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Response Time</h2>
-                            <div class="relative h-56 w-full">
+                            <div class="relative h-96 w-full">
                                 <canvas id="responseVerticalChart"></canvas>
                             </div>
                         </div>
@@ -183,7 +183,8 @@
                         <div
                             class="sm:col-span-6 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
                             <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Uptime by Service</h2>
-                            <div class="relative flex-1 min-h-56 w-full">
+                            <div id="uptimeChartContainer" class="relative w-full overflow-y-auto max-h-[42rem]"
+                                style="height: 24rem;">
                                 <canvas id="uptimeHorizontalChart"></canvas>
                             </div>
                         </div>
@@ -191,7 +192,7 @@
                         <div
                             class="sm:col-span-6 flex flex-col bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
                             <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Category Breakdown</h2>
-                            <div id="categoryCounts" class="space-y-3 flex-1"></div>
+                            <div id="categoryCounts" class="space-y-3 flex-1 overflow-y-auto max-h-[42rem]"></div>
                         </div>
                     </div>
 
@@ -429,9 +430,19 @@
                 }
 
                 if (uptimeHorizontalChart) {
+                    // Give each monitor's bar a consistent height instead of squeezing them into a
+                    // fixed-size card — the container grows with the monitor count (scrolling past ~30).
+                    const uptimeContainer = document.getElementById('uptimeChartContainer');
+                    if (uptimeContainer) {
+                        const perBarHeight = 28;
+                        const minHeight = 224; // 14rem
+                        uptimeContainer.style.height = Math.max(minHeight, activeMonitors.length * perBarHeight) + 'px';
+                    }
+
                     uptimeHorizontalChart.data.labels = activeMonitors.map(m => m.name);
                     uptimeHorizontalChart.data.datasets[0].data = activeMonitors.map(m => parseFloat(m.uptime_24h) || 0);
                     uptimeHorizontalChart.data.datasets[0].backgroundColor = activeMonitors.map(m => classify(m) === 'DOWN' ? themeColor('--color-error') : themeColor('--color-primary'));
+                    uptimeHorizontalChart.resize();
                     uptimeHorizontalChart.update('none');
                 }
 
