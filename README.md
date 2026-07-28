@@ -38,8 +38,6 @@ on a single low-spec box, with room to spare.
 
 ![Organization settings](docs/screenshots/org-settings.png)
 
-> _More screenshots (Login) coming soon — drop your own into `docs/screenshots/` (see [docs/screenshots/README.md](docs/screenshots/README.md) for filenames) and they'll show up here automatically._
-
 ---
 
 ## Why Uptinger?
