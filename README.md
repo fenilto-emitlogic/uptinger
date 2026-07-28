@@ -22,21 +22,34 @@ on a single low-spec box, with room to spare.
 
 ## 📸 Screenshots
 
-### Monitor Detail — response time, uptime & heartbeat history at a glance
+_Click any thumbnail to view it full size._
 
-![Monitor detail](docs/screenshots/dashboard.png)
+<table>
+<tr>
+<td width="33%" align="center">
+<a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" width="260" alt="Monitor detail"></a>
+<br><sub><b>Monitor Detail</b><br>Response time, uptime & heartbeat history</sub>
+</td>
+<td width="33%" align="center">
+<a href="docs/screenshots/eagle-eye.png"><img src="docs/screenshots/eagle-eye.png" width="260" alt="Eagle Eye"></a>
+<br><sub><b>Eagle Eye</b><br>Fleet-wide kiosk dashboard for status walls</sub>
+</td>
+<td width="33%" align="center">
+<a href="docs/screenshots/add-monitor.png"><img src="docs/screenshots/add-monitor.png" width="260" alt="Add monitor"></a>
+<br><sub><b>Add Monitor</b><br>16 monitor types, one clean flow</sub>
+</td>
+</tr>
+<tr>
+<td width="33%" align="center">
+<a href="docs/screenshots/org-settings.png"><img src="docs/screenshots/org-settings.png" width="260" alt="Organization settings"></a>
+<br><sub><b>Organization Settings</b><br>Members, roles, groups, tags & SMTP</sub>
+</td>
+<td width="33%"></td>
+<td width="33%"></td>
+</tr>
+</table>
 
-### Eagle Eye — fleet-wide kiosk dashboard for status walls
-
-![Eagle Eye](docs/screenshots/eagle-eye.png)
-
-### Add Monitor — 16 monitor types, one clean flow
-
-![Add monitor](docs/screenshots/add-monitor.png)
-
-### Organization Settings — members, roles, groups, tags & SMTP in one place
-
-![Organization settings](docs/screenshots/org-settings.png)
+> _More screenshots (Login, etc.) coming soon — drop your own into `docs/screenshots/` (see [docs/screenshots/README.md](docs/screenshots/README.md) for filenames) and they'll show up here automatically._
 
 ---
 
