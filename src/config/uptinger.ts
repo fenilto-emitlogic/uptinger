@@ -713,12 +713,39 @@ class UptingerEngine {
         });
     }
 
-    /** Looks up domain registration expiry via WHOIS. Best-effort — WHOIS formats vary by registry. */
-    private getDomainExpiry(hostname: string): Promise<{ date: string; days: number } | null> {
+    /**
+     * RDAP is the IETF-standard, JSON-over-HTTPS replacement for legacy port-43 WHOIS. rdap.org
+     * runs the IANA bootstrap redirect, so one URL works for any TLD without us maintaining a
+     * per-registry server list. Registries are actively retiring legacy WHOIS in favor of this
+     * (e.g. VeriSign's WHOIS server now returns a "being retired... rate limit exceeded" message
+     * instead of data), so RDAP is the primary and more durable lookup path.
+     */
+    private async queryRdapExpiry(domain: string): Promise<{ date: string; days: number } | null> {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
+            const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!res.ok) return null;
+
+            const json: any = await res.json();
+            const events: Array<{ eventAction: string; eventDate: string }> = json?.events || [];
+            const expiryEvent = events.find(e => e.eventAction === 'expiration');
+            if (!expiryEvent) return null;
+
+            const parsed = new Date(expiryEvent.eventDate);
+            if (Number.isNaN(parsed.getTime())) return null;
+            const days = Math.ceil((parsed.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+            return { date: parsed.toISOString().slice(0, 10), days };
+        } catch {
+            return null;
+        }
+    }
+
+    /** Runs a single legacy whois query (optionally following a registrar referral) and extracts the expiry date. */
+    private queryWhoisExpiry(domain: string, follow: number): Promise<{ date: string; days: number } | null> {
         return new Promise((resolve) => {
-            const parts = hostname.split('.');
-            const domain = parts.length > 2 ? parts.slice(-2).join('.') : hostname;
-            whoisLookup(domain, { timeout: CHECK_TIMEOUT_MS, follow: 2 }, (err, data) => {
+            whoisLookup(domain, { timeout: CHECK_TIMEOUT_MS, follow }, (err, data) => {
                 if (err || typeof data !== 'string') return resolve(null);
                 const match = data.match(/(?:Registry Expiry Date|Registrar Registration Expiration Date|Expiration Date|Expiry Date|paid-till|renewal date)\s*:\s*(.+)/i);
                 if (!match) return resolve(null);
@@ -730,6 +757,27 @@ class UptingerEngine {
         });
     }
 
+    /**
+     * Looks up domain registration expiry. Tries RDAP first (see queryRdapExpiry) since it's the
+     * modern standard and not subject to legacy WHOIS rate-limiting/retirement. Falls back to
+     * legacy WHOIS (with a same-request retry if the `follow` referral hits a blank
+     * "Registrar WHOIS Server:" line — some registrars, e.g. Hostinger, publish that field empty,
+     * which makes the `whois` package try to connect to it and fail against 127.0.0.1:43) only if
+     * RDAP has no answer, e.g. for TLDs not covered by the IANA RDAP bootstrap.
+     */
+    private async getDomainExpiry(hostname: string): Promise<{ date: string; days: number } | null> {
+        const parts = hostname.split('.');
+        const domain = parts.length > 2 ? parts.slice(-2).join('.') : hostname;
+
+        const viaRdap = await this.queryRdapExpiry(domain);
+        if (viaRdap) return viaRdap;
+
+        const followed = await this.queryWhoisExpiry(domain, 2);
+        if (followed) return followed;
+
+        return this.queryWhoisExpiry(domain, 0);
+    }
+
     /** Refreshes cert/domain expiry for https monitors, throttled to once per 12h since lookups are slow/rate-limited. */
     private async refreshExpiryInfo(monitor: IFMonitorParsed): Promise<Record<string, any>> {
         const cfg = monitor.parsed_config || {};
@@ -737,8 +785,17 @@ class UptingerEngine {
         if (!isHttps) return {};
 
         let hostname = monitor.hostname;
+        let tlsPort = 443;
         try {
-            if (!hostname && monitor.url) hostname = new URL(monitor.url).hostname;
+            if (monitor.url) {
+                const parsedUrl = new URL(monitor.url);
+                if (!hostname) hostname = parsedUrl.hostname;
+                // The URL's own port (e.g. https://example.com:8443) is the one actually
+                // serving TLS. monitor.port is the HTTP check port and defaults to 80 for
+                // this monitor type — using it here would connect to the wrong port and
+                // always fail the handshake, leaving cert expiry permanently N/A.
+                if (parsedUrl.port) tlsPort = parseInt(parsedUrl.port, 10);
+            }
         } catch { /* invalid URL, skip */ }
         const usesHttps = monitor.url ? monitor.url.startsWith('https://') : true;
         if (!hostname || !usesHttps) return {};
@@ -747,9 +804,15 @@ class UptingerEngine {
         if (Date.now() - lastChecked < 12 * 60 * 60 * 1000) return {};
 
         const [cert, domain] = await Promise.all([
-            this.getCertExpiry(hostname, monitor.port || 443),
+            this.getCertExpiry(hostname, tlsPort),
             this.getDomainExpiry(hostname)
         ]);
+
+        // Only commit to the 12h cache when we actually got something — a transient failure
+        // (network blip, target briefly unreachable) would otherwise stamp expiry_checked_at
+        // and lock the monitor into showing N/A for a full 12 hours before it's retried, even
+        // though the very next check cycle might well have succeeded.
+        if (!cert && !domain) return {};
 
         return {
             cert_exp_date: cert ? cert.date : null,
