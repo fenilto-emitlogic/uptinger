@@ -20,6 +20,28 @@ on a single low-spec box, with room to spare.
 
 ---
 
+## 📸 Screenshots
+
+### Monitor Detail — response time, uptime & heartbeat history at a glance
+
+![Monitor detail](docs/screenshots/dashboard.png)
+
+### Eagle Eye — fleet-wide kiosk dashboard for status walls
+
+![Eagle Eye](docs/screenshots/eagle-eye.png)
+
+### Add Monitor — 16 monitor types, one clean flow
+
+![Add monitor](docs/screenshots/add-monitor.png)
+
+### Organization Settings — members, roles, groups, tags & SMTP in one place
+
+![Organization settings](docs/screenshots/org-settings.png)
+
+> _More screenshots (Login) coming soon — drop your own into `docs/screenshots/` (see [docs/screenshots/README.md](docs/screenshots/README.md) for filenames) and they'll show up here automatically._
+
+---
+
 ## Why Uptinger?
 
 Most uptime monitors either want your credit card every month, or want a
@@ -79,24 +101,6 @@ whether your stuff is up.
 - **NOC / status wall displays** — point a spare monitor or TV at the Eagle Eye kiosk view for an at-a-glance fleet health board
 - **Agencies managing client sites** — group monitors per client, scope team members to only the groups they manage
 - **Compliance-sensitive environments** — self-hosted means your uptime data, check history, and credentials never leave infrastructure you control
-
----
-
-## 📸 Screenshots
-
-### Monitor Detail — response time, uptime & heartbeat history at a glance
-
-![Monitor detail](docs/screenshots/dashboard.png)
-
-### Eagle Eye — fleet-wide kiosk dashboard for status walls
-
-![Eagle Eye](docs/screenshots/eagle-eye.png)
-
-### Add Monitor — 16 monitor types, one clean flow
-
-![Add monitor](docs/screenshots/add-monitor.png)
-
-> _More screenshots (Login, Organization Settings) coming soon — drop your own into `docs/screenshots/` (see [docs/screenshots/README.md](docs/screenshots/README.md) for filenames) and they'll show up here automatically._
 
 ---
 
