@@ -1,0 +1,186 @@
+PolyForm Noncommercial License 1.0.0
+
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
+
+Copyright (c) 2026 Emitlogic Technologies Private Limited
+
+## Acceptance
+
+In order to get any license under these terms, you must agree
+to them as both strict obligations and conditions to all
+your licenses.
+
+## Copyright License
+
+The licensor grants you a copyright license for the software
+to do everything you might do with the software that would
+otherwise infringe the licensor's copyright in it for any
+permitted purpose. However, you may only distribute the
+software according to Distribution License and make changes
+or new works based on the software according to Changes and
+New Works License.
+
+## Distribution License
+
+The licensor grants you an additional copyright license to
+distribute copies of the software. Your license to distribute
+covers distributing the software with changes and new works
+permitted by Changes and New Works License.
+
+## Notices
+
+You must ensure that anyone who gets a copy of any part of
+the software from you also gets a copy of these terms or the
+URL for them above, as well as copies of any plain-text lines
+beginning with "Required Notice:" that the licensor provided
+with the software. For example:
+
+> Required Notice: Copyright Emitlogic Technologies Private Limited (https://www.emitlogic.com/)
+
+## Changes and New Works License
+
+The licensor grants you an additional copyright license to
+make changes and new works based on the software for any
+permitted purpose.
+
+## Patent License
+
+The licensor grants you a patent license for the software that
+covers patent claims the licensor can license, or becomes able
+to license, that you would infringe by using the software.
+
+## Noncommercial Purposes
+
+Any noncommercial purpose is a permitted purpose.
+
+Self-hosting this software — running your own instance of it,
+for yourself, your organization, or anyone else, without
+charging for access to it or otherwise deriving commercial
+advantage from operating it as a paid service — is expressly
+a permitted noncommercial purpose under this license.
+
+## Personal Uses
+
+Personal use for research, experiment, and testing for the
+benefit of public knowledge, personal study, private
+entertainment, hobby projects, amateur pursuits, or religious
+observance, without any anticipated commercial application,
+is use for a permitted purpose.
+
+## Noncommercial Organizations
+
+Use by any charitable organization, educational institution,
+public research organization, public safety or health
+organization, environmental protection organization, or
+government institution is use for a permitted purpose
+regardless of the source of funding or obligations resulting
+from the funding.
+
+## Attribution Requirement
+
+This is an additional term, not part of the standard PolyForm
+Noncommercial License text, added by the licensor under its
+rights as licensor.
+
+If you self-host, deploy, or otherwise run an instance of the
+software — for yourself, your company, your organization, or
+any other party — you must publicly credit "Uptinger" and
+Emitlogic Technologies Private Limited as the origin of the
+software. This credit must appear somewhere a visitor or user
+could reasonably be expected to notice it — including, but not
+limited to, any company, portfolio, project, or organization
+website through which you present, describe, or link to that
+instance (e.g. an "About," "Credits," "Powered By," or "Tech
+Stack" page or section); the running instance's own footer,
+login page, or settings screen; associated documentation or
+README files; or any other place tied to that deployment where
+such credit would ordinarily be given. The credit should
+include the name "Uptinger" together with "Emitlogic
+Technologies Private Limited" and, where practical, a link
+back to the project's source repository.
+
+Removing, hiding, or omitting this credit, or presenting the
+software as your own original work without attribution, is a
+violation of these terms and is treated the same as any other
+violation under Violations below.
+
+## Fair Use
+
+You may have "fair use" rights for the software under the
+law. These terms do not limit them.
+
+## No Other Rights
+
+These terms do not allow you to sublicense or transfer any of
+your licenses to anyone else, or prevent the licensor from
+granting licenses to anyone else. These terms do not imply
+any other licenses.
+
+## Patent Defense
+
+If you make any written claim that the software infringes or
+contributes to infringement of any patent, your patent license
+for the software granted under these terms ends immediately.
+If your company makes such a claim, your patent license ends
+immediately for work on behalf of your company.
+
+## Violations
+
+The first time you are notified in writing that you have
+violated any of these terms, or done anything with the
+software not covered by your licenses, your licenses can
+still be reinstated if you come into full compliance with
+these terms, and take practical steps to correct past
+violations, within 32 days of receiving notice. Otherwise, all
+your licenses end immediately.
+
+## No Liability
+
+***As far as the law allows, the software comes as is, without
+any warranty or condition, and the licensor will not be liable
+to you for any damages arising out of these terms or the use
+or nature of the software, under any kind of legal claim.***
+
+## Definitions
+
+- The **licensor** is Emitlogic Technologies Private Limited, the
+  entity offering these terms.
+- The **software** is the software the licensor makes available
+  under these terms, including this repository ("Uptinger") and
+  any part of it.
+- **you** refers to the individual or entity agreeing to these
+  terms.
+- **your company** is any legal entity, sole proprietorship, or
+  other kind of organization that you work for, plus all
+  organizations that have control over, are under the control
+  of, or are under common control with that organization.
+  **control** means ownership of substantially all the assets
+  of an entity, or the power to direct its management and
+  policies by vote, contract, or otherwise. Control can be
+  direct or indirect.
+- **your licenses** are all the licenses granted to you for the
+  software under these terms.
+- **use** means anything you do with the software requiring one
+  of your licenses.
+- **trademark** means trademarks, service marks, and similar
+  rights.
+
+---
+
+## Plain-language summary (not a substitute for the license text above)
+
+- You **may** self-host this software, run it for your own
+  organization, modify it, and share your modified copies —
+  free of charge, for personal, educational, nonprofit, or any
+  other noncommercial purpose — **as long as you publicly
+  credit "Uptinger" and Emitlogic Technologies Private Limited**
+  on your company/portfolio/project website (e.g. an "About" or
+  "Powered By" section).
+- You **may not** sell this software, sell access to a hosted
+  instance of it, sell support/services built around it for
+  profit, incorporate it into a commercial product or service,
+  or otherwise use it to make money — that is considered a
+  violation of this license and treated as an offense against
+  the terms granted to you.
+- If you want to use this software commercially, you must get
+  separate, explicit written permission from the licensor.
