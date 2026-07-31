@@ -266,6 +266,34 @@ class MonitorModel {
         return res.changes > 0;
     }
 
+    /**
+     * Heartbeats for the response-time chart, scoped to an actual time window instead of the
+     * fixed last-50-rows cap used elsewhere — the "1h/6h/24h/7d" filters would otherwise just
+     * re-filter that same tiny slice and look broken for any monitor checking more than a few
+     * times a minute. `sinceIso` omitted means "all history" (still capped so the client never
+     * has to render an unbounded array).
+     */
+    getHeartbeatsInRange(id: number, sinceIso?: string, limit = 500): { status: string; ping: number; time: string; timestamp: string | null }[] {
+        const rows = (sinceIso
+            ? db.prepare(`
+                SELECT * FROM tbl_monitor_checks
+                WHERE monitor_id = ? AND timestamp >= ?
+                ORDER BY id DESC LIMIT ?
+            `).all(id, sinceIso, limit)
+            : db.prepare(`
+                SELECT * FROM tbl_monitor_checks
+                WHERE monitor_id = ?
+                ORDER BY id DESC LIMIT ?
+            `).all(id, limit)) as any[];
+
+        return rows.reverse().map(h => ({
+            status: h.status === 'ONLINE' ? 'up' : 'down',
+            ping: h.ping_ms,
+            time: h.timestamp ? new Date(toUtcIso(h.timestamp)).toISOString().slice(11, 16) : '00:00',
+            timestamp: h.timestamp ? toUtcIso(h.timestamp) : null
+        }));
+    }
+
     /** Wipes all check history/analytics for a monitor while leaving its own settings (interval, retries, etc.) untouched. */
     resetData(id: number): IFMonitorParsed | undefined {
         const existing = this.findById(id);

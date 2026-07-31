@@ -1051,28 +1051,33 @@
                 updateUptimePieChart(m);
             }
 
-            const CHART_RANGE_MS = {
-                '1h': 60 * 60 * 1000,
-                '6h': 6 * 60 * 60 * 1000,
-                '24h': 24 * 60 * 60 * 1000,
-                '7d': 7 * 24 * 60 * 60 * 1000
-            };
+            // Not cached: the dashboard live-polls every 5s (LIVE_REFRESH_INTERVAL_MS), so a
+            // cached response would go stale almost immediately and mask incoming checks.
+            async function getChartHeartbeats(m, range) {
+                if (range === 'Recent') return m.heartbeats || [];
 
-            function getChartHeartbeats(m) {
-                const heartbeats = m.heartbeats || [];
-                const filterEl = document.getElementById('chartTimeFilter');
-                const range = filterEl ? filterEl.value : 'Recent';
-                const rangeMs = CHART_RANGE_MS[range];
-                if (!rangeMs) return heartbeats; // 'Recent' - show everything we have
-
-                const cutoff = Date.now() - rangeMs;
-                return heartbeats.filter(h => h.timestamp && new Date(h.timestamp).getTime() >= cutoff);
+                try {
+                    const res = await fetch(`/api/monitors/${m.id}/heartbeats?range=${range}`);
+                    const json = await res.json();
+                    return (json.status && json.data && json.data.heartbeats) ? json.data.heartbeats : [];
+                } catch {
+                    return m.heartbeats || [];
+                }
             }
 
-            function updateResponseChart(m) {
+            // Guards against a slow fetch resolving after the user has already switched monitor
+            // or range, which would otherwise paint stale data over the current selection.
+            let chartRequestToken = 0;
+
+            async function updateResponseChart(m) {
                 if (!chartInstance || !m || !m.heartbeats || m.heartbeats.length === 0) return;
 
-                const filtered = getChartHeartbeats(m);
+                const filterEl = document.getElementById('chartTimeFilter');
+                const range = filterEl ? filterEl.value : 'Recent';
+
+                const token = ++chartRequestToken;
+                const filtered = await getChartHeartbeats(m, range);
+                if (token !== chartRequestToken || activeId !== m.id) return; // superseded by a newer request
 
                 const lastHb = m.heartbeats[m.heartbeats.length - 1];
                 const isDown = lastHb ? lastHb.status !== 'up' : (m.status !== 'ONLINE');

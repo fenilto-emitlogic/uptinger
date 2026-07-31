@@ -175,6 +175,38 @@ router.get('/:id', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedR
     }
 });
 
+// GET /api/monitors/:id/heartbeats?range=1h|6h|24h|7d - Response-time chart data scoped to
+// an actual time window, instead of the fixed last-50-rows cap used for the monitor's preview.
+const HEARTBEAT_RANGE_MS: Record<string, number> = {
+    '1h': 60 * 60 * 1000,
+    '6h': 6 * 60 * 60 * 1000,
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000
+};
+
+router.get('/:id/heartbeats', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        const groupIds = scopedGroupIds(req);
+        if (groupIds && (monitor.group_id == null || !groupIds.includes(monitor.group_id))) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+
+        const range = String(req.query.range || '');
+        const rangeMs = HEARTBEAT_RANGE_MS[range];
+        const sinceIso = rangeMs ? new Date(Date.now() - rangeMs).toISOString() : undefined;
+
+        const heartbeats = monitorModel.getHeartbeatsInRange(id, sinceIso);
+        return sendSuccess(res, 'Heartbeats', { heartbeats });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to fetch heartbeats', null, 500);
+    }
+});
+
 // POST /api/monitors - Create monitor with dynamic type validation
 router.post('/', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedRequest, res) => {
     try {
