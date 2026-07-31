@@ -402,7 +402,8 @@
                                                 <th class="py-2.5 px-4 rounded-l-xl">Timestamp</th>
                                                 <th class="py-2.5 px-4">Status</th>
                                                 <th class="py-2.5 px-4">Latency</th>
-                                                <th class="py-2.5 px-4 rounded-r-xl">Details</th>
+                                                <th class="py-2.5 px-4">Details</th>
+                                                <th class="py-2.5 px-4 rounded-r-xl">Response</th>
                                             </tr>
                                         </thead>
                                         <tbody id="logsTableBody"
@@ -433,6 +434,15 @@
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                         <span>Edit</span>
+                                    </button>
+                                    <button onclick="resetActive()"
+                                        class="flex-1 h-12 rounded-xl bg-[var(--color-bg-surface)] hover:bg-[var(--color-border)] text-[var(--color-text-primary)] border border-[var(--color-border)] text-sm font-semibold flex items-center justify-center space-x-2 transition-all">
+                                        <svg class="w-4 h-4 text-[var(--color-secondary)]" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        <span>Reset</span>
                                     </button>
                                     <button onclick="cloneActive()"
                                         class="flex-1 h-12 rounded-xl bg-[var(--color-bg-surface)] hover:bg-[var(--color-border)] text-[var(--color-text-primary)] border border-[var(--color-border)] text-sm font-semibold flex items-center justify-center space-x-2 transition-all">
@@ -496,6 +506,44 @@
                     <button type="button" onclick="confirmDeleteActive()"
                         class="px-4 py-2 rounded-xl bg-[var(--color-error)] hover:opacity-90 text-white text-xs font-bold transition-all">
                         Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESET CONFIRMATION MODAL -->
+        <div id="resetConfirmModal"
+            class="fixed inset-0 z-50 bg-[color-mix(in_srgb,var(--color-bg-main)_85%,transparent)] backdrop-blur-md hidden flex items-center justify-center p-4">
+            <div class="bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-5 transform transition-all scale-95 opacity-0"
+                id="resetConfirmContainer">
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-[color-mix(in_srgb,var(--color-secondary)_15%,transparent)] border border-[color-mix(in_srgb,var(--color-secondary)_30%,transparent)] flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-[var(--color-secondary)]" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-[var(--color-text-primary)]">Reset Monitor Data</h3>
+                        <p class="text-xs text-[var(--color-text-secondary)]">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-xs text-[var(--color-text-secondary)]">
+                    Are you sure you want to reset all data for <span id="resetConfirmName"
+                        class="font-semibold text-[var(--color-text-primary)]">this monitor</span>? All heartbeat
+                    history, logs and analytics will be permanently removed. The monitor's settings (interval,
+                    retries, etc.) will be kept.
+                </p>
+                <div class="flex items-center justify-end space-x-2 pt-1">
+                    <button type="button" onclick="closeResetConfirmModal()"
+                        class="px-4 py-2 rounded-xl bg-[var(--color-bg-main)] hover:bg-[var(--color-border)] text-[var(--color-text-secondary)] border border-[var(--color-border)] text-xs font-semibold transition-all">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="confirmResetActive()"
+                        class="px-4 py-2 rounded-xl bg-[var(--color-secondary)] hover:opacity-90 text-white text-xs font-bold transition-all">
+                        Reset
                     </button>
                 </div>
             </div>
@@ -1049,6 +1097,64 @@
                 }
             }
 
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>"']/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[c]));
+            }
+
+            function formatResponseHeaders(raw, logId) {
+                if (!raw) return '<span class="text-[var(--color-text-muted)]">—</span>';
+                let obj;
+                try { obj = JSON.parse(raw); } catch { return '<span class="text-[var(--color-text-muted)]">—</span>'; }
+                const summary = Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join('; ');
+                return `
+                    <div class="flex items-center gap-1.5">
+                        <span class="cursor-help truncate" title="${escapeHtml(summary)}">${escapeHtml(summary)}</span>
+                        <button type="button" onclick="copyResponseHeaders(${logId}, this)" title="Copy response"
+                            class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+
+            function copyResponseHeaders(logId, btn) {
+                const m = monitors.find(x => x.id === activeId);
+                const log = m && m.logs ? m.logs.find(l => l.id === logId) : null;
+                if (!log || !log.response_headers) return;
+
+                let text = log.response_headers;
+                try { text = JSON.stringify(JSON.parse(log.response_headers), null, 2); } catch { /* copy raw as-is */ }
+
+                const done = () => {
+                    showToast('Response copied to clipboard', 'success');
+                    if (btn) {
+                        const original = btn.innerHTML;
+                        btn.innerHTML = `<svg class="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+                        setTimeout(() => { btn.innerHTML = original; }, 1200);
+                    }
+                };
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done).catch(() => {
+                        showToast('Failed to copy response', 'error');
+                    });
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch { showToast('Failed to copy response', 'error'); }
+                    document.body.removeChild(ta);
+                }
+            }
+
             function getFilteredLogs() {
                 const m = monitors.find(x => x.id === activeId);
                 const limitEl = document.getElementById('logsLimitFilter');
@@ -1088,11 +1194,12 @@
                         <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${log.status}</span></td>
                         <td class="py-2.5 px-4 text-[var(--color-text-primary)]">${log.ms} ms</td>
                         <td class="py-2.5 px-4 text-[var(--color-text-secondary)] truncate max-w-xs">${log.msg}</td>
+                        <td class="py-2.5 px-4 text-[var(--color-text-secondary)] max-w-xs">${formatResponseHeaders(log.response_headers, log.id)}</td>
                     `;
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)]">No heartbeat check events recorded.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)]">No heartbeat check events recorded.</td></tr>`;
                 }
             }
 
@@ -1164,6 +1271,33 @@
                     .then(res => {
                         closeDeleteConfirmModal();
                         openToast('Monitor deleted');
+                        location.reload();
+                    });
+            }
+
+            function resetActive() {
+                const m = monitors.find(x => x.id === activeId);
+                if (!m) return;
+                document.getElementById('resetConfirmName').innerText = m.name;
+                const modal = document.getElementById('resetConfirmModal');
+                const container = document.getElementById('resetConfirmContainer');
+                modal.classList.remove('hidden');
+                setTimeout(() => container.classList.remove('scale-95', 'opacity-0'), 10);
+            }
+
+            function closeResetConfirmModal() {
+                const modal = document.getElementById('resetConfirmModal');
+                const container = document.getElementById('resetConfirmContainer');
+                container.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+
+            function confirmResetActive() {
+                fetch(`/api/monitors/${activeId}/reset`, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => {
+                        closeResetConfirmModal();
+                        openToast('Monitor data reset');
                         location.reload();
                     });
             }

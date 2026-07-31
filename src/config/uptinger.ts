@@ -23,6 +23,24 @@ import { EmailTemplateType, getAppUrl } from './email-templates.js';
 const CHECK_TIMEOUT_MS = 10_000;
 const RESYNC_INTERVAL_MS = 30_000;
 
+// Runtime-computed config keys get rewritten on every check (updateDashboardConfig/
+// refreshExpiryInfo). They must be excluded when building the resync signature below —
+// otherwise every check invalidates the signature on the next resync tick, forcing an
+// immediate (0ms) reschedule and making every monitor effectively run on the resync
+// cadence instead of its own configured interval.
+const RUNTIME_CONFIG_KEYS = new Set([
+    'current_response', 'avg_response_24h', 'uptime_24h', 'uptime_30d', 'uptime_1y',
+    'last_check_status', 'last_check_msg', 'last_checked_at',
+    'cert_exp_date', 'cert_exp_days', 'domain_exp_date', 'domain_exp_days', 'expiry_checked_at'
+]);
+
+function staticConfigSignature(config: Record<string, any> | undefined): string {
+    if (!config) return '';
+    const entries = Object.entries(config).filter(([key]) => !RUNTIME_CONFIG_KEYS.has(key));
+    entries.sort(([a], [b]) => a.localeCompare(b));
+    return JSON.stringify(entries);
+}
+
 // Types that are actively probed. Anything else (push, manual) is passive —
 // it only updates from external pings/manual edits, never from this engine.
 const ACTIVE_TYPES = new Set([
@@ -36,6 +54,7 @@ interface ICheckResult {
     ping_ms: number;
     status_code: number;
     msg: string;
+    response_headers?: string | null;
 }
 
 interface IScheduled {
@@ -87,7 +106,7 @@ class UptingerEngine {
                 continue;
             }
 
-            const signature = `${monitor.interval_seconds}:${monitor.retry_interval}:${monitor.type}:${monitor.url}:${monitor.hostname}:${monitor.port}:${monitor.config}`;
+            const signature = `${monitor.interval_seconds}:${monitor.retry_interval}:${monitor.type}:${monitor.url}:${monitor.hostname}:${monitor.port}:${staticConfigSignature(monitor.parsed_config)}`;
             const existing = this.scheduled.get(monitor.id);
             if (!existing) {
                 this.scheduleNext(monitor.id, 0, signature);
@@ -226,6 +245,7 @@ class UptingerEngine {
             });
             const ping_ms = Date.now() - started;
             const body = monitor.type === 'http-keyword' ? await res.text() : '';
+            const response_headers = JSON.stringify(Object.fromEntries(res.headers.entries()));
 
             if (monitor.type === 'http-keyword') {
                 const keyword = cfg.keyword;
@@ -233,13 +253,13 @@ class UptingerEngine {
                     const found = body.includes(keyword);
                     const shouldExist = cfg.invert_keyword !== true;
                     if (found !== shouldExist) {
-                        return { ok: false, ping_ms, status_code: res.status, msg: `Keyword check failed (expected ${shouldExist ? 'present' : 'absent'})` };
+                        return { ok: false, ping_ms, status_code: res.status, msg: `Keyword check failed (expected ${shouldExist ? 'present' : 'absent'})`, response_headers };
                     }
                 }
             }
 
             const ok = this.isAcceptedStatus(res.status, cfg.accepted_status_codes);
-            return { ok, ping_ms, status_code: res.status, msg: ok ? 'OK' : `Unexpected status ${res.status}` };
+            return { ok, ping_ms, status_code: res.status, msg: ok ? 'OK' : `Unexpected status ${res.status}`, response_headers };
         } catch (err: any) {
             const ping_ms = Date.now() - started;
             const msg = err?.name === 'AbortError' ? `Timed out after ${CHECK_TIMEOUT_MS}ms` : (err?.message || 'Request failed');
@@ -837,9 +857,9 @@ class UptingerEngine {
             : (isDown ? `${result.msg} — retries exhausted, monitor auto-paused` : result.msg);
 
         db.prepare(`
-            INSERT INTO tbl_monitor_checks (monitor_id, status, ping_ms, status_code, msg)
-            VALUES (?, ?, ?, ?, ?)
-        `).run(monitor.id, result.ok ? 'ONLINE' : 'OFFLINE', result.ping_ms, result.status_code, msg);
+            INSERT INTO tbl_monitor_checks (monitor_id, status, ping_ms, status_code, msg, response_headers)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(monitor.id, result.ok ? 'ONLINE' : 'OFFLINE', result.ping_ms, result.status_code, msg, result.response_headers ?? null);
 
         db.prepare(`UPDATE tbl_monitors SET status = ?, updated_at = ? WHERE id = ?`)
             .run(status, new Date().toISOString(), monitor.id);
@@ -951,6 +971,11 @@ class UptingerEngine {
             FROM tbl_monitor_checks WHERE monitor_id = ? AND timestamp >= datetime('now', '-30 day')
         `).get(monitor.id) as any;
 
+        const window1y = db.prepare(`
+            SELECT COUNT(*) AS total, SUM(CASE WHEN status != 'ONLINE' THEN 1 ELSE 0 END) AS down
+            FROM tbl_monitor_checks WHERE monitor_id = ? AND timestamp >= datetime('now', '-365 day')
+        `).get(monitor.id) as any;
+
         const avg24h = db.prepare(`
             SELECT COALESCE(AVG(ping_ms), 0) AS avg FROM tbl_monitor_checks
             WHERE monitor_id = ? AND timestamp >= datetime('now', '-1 day')
@@ -964,6 +989,7 @@ class UptingerEngine {
             avg_response_24h: `${Math.round(avg24h.avg || 0)}ms`,
             uptime_24h: pct(window24h.total || 0, window24h.down || 0),
             uptime_30d: pct(window30d.total || 0, window30d.down || 0),
+            uptime_1y: pct(window1y.total || 0, window1y.down || 0),
             last_check_status: status,
             last_check_msg: result.msg,
             last_checked_at: new Date().toISOString(),

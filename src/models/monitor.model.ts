@@ -266,6 +266,28 @@ class MonitorModel {
         return res.changes > 0;
     }
 
+    /** Wipes all check history/analytics for a monitor while leaving its own settings (interval, retries, etc.) untouched. */
+    resetData(id: number): IFMonitorParsed | undefined {
+        const existing = this.findById(id);
+        if (!existing) return undefined;
+
+        db.prepare(`DELETE FROM tbl_monitor_checks WHERE monitor_id = ?`).run(id);
+        db.prepare(`DELETE FROM tbl_monitor_analytics WHERE monitor_id = ?`).run(id);
+
+        const RUNTIME_CONFIG_KEYS = [
+            'current_response', 'avg_response_24h', 'uptime_24h', 'uptime_30d', 'uptime_1y',
+            'last_check_status', 'last_check_msg', 'last_checked_at',
+            'cert_exp_date', 'cert_exp_days', 'domain_exp_date', 'domain_exp_days', 'expiry_checked_at'
+        ];
+        const staticConfig = { ...existing.parsed_config };
+        for (const key of RUNTIME_CONFIG_KEYS) delete staticConfig[key];
+
+        db.prepare(`UPDATE tbl_monitors SET status = 'ONLINE', config = ?, updated_at = ? WHERE id = ?`)
+            .run(JSON.stringify(encryptSecrets(staticConfig)), new Date().toISOString(), id);
+
+        return this.findById(id);
+    }
+
     private parseMonitor(r: IFMonitor, presetTags?: string[], presetChecks?: any[]): IFMonitorParsed {
         let parsedConfig: Record<string, any> = {};
         try {
@@ -289,7 +311,8 @@ class MonitorModel {
             status: h.status_code === 200 ? '200 OK' : 'ERROR',
             ms: h.ping_ms,
             type: 'heartbeat',
-            msg: h.msg || 'Check completed'
+            msg: h.msg || 'Check completed',
+            response_headers: h.response_headers || null
         }));
 
         const heartbeats = hbs.reverse().map(h => ({
@@ -334,6 +357,8 @@ export function toDashboardSite(m: IFMonitorParsed) {
         domain_exp_date: m.parsed_config.domain_exp_date ?? null,
         domain_exp_days: m.parsed_config.domain_exp_days ?? null,
         interval_seconds: m.interval_seconds || 60,
+        max_retries: m.max_retries,
+        retry_interval: m.retry_interval,
         is_paused: m.is_paused,
         tags: m.parsed_tags,
         config: m.parsed_config,

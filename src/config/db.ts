@@ -122,6 +122,7 @@ db.exec(`
         ping_ms INTEGER DEFAULT 0,
         status_code INTEGER DEFAULT 200,
         msg TEXT DEFAULT '',
+        response_headers TEXT DEFAULT NULL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
     );
@@ -388,6 +389,13 @@ if (orgsWithoutTags.length > 0) {
         }
     });
     seedOrgTags(orgsWithoutTags);
+}
+
+// tbl_monitor_checks.response_headers didn't exist in earlier installs — CREATE TABLE IF NOT
+// EXISTS above is a no-op for a table that's already there, so add the column here for upgrades.
+const existingCheckColumns = (db.prepare(`PRAGMA table_info(tbl_monitor_checks)`).all() as { name: string }[]).map(c => c.name);
+if (!existingCheckColumns.includes('response_headers')) {
+    db.exec(`ALTER TABLE tbl_monitor_checks ADD COLUMN response_headers TEXT DEFAULT NULL`);
 }
 
 // Migrate legacy comma-separated tbl_monitors.tags into the tags table/join

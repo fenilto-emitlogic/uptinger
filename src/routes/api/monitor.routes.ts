@@ -457,6 +457,26 @@ router.post('/:id/pause', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: Org
     }
 });
 
+// POST /api/monitors/:id/reset - Wipe all check history/analytics for a monitor, keeping its settings intact
+router.post('/:id/reset', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const existing = monitorModel.findById(id);
+        if (!existing || existing.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+
+        const updated = monitorModel.resetData(id);
+        if (!updated) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+
+        return sendSuccess(res, 'Monitor data reset', { monitor: updated });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to reset monitor data', null, 500);
+    }
+});
+
 // POST /api/monitors/:id/status - Manually set status (for "manual" type monitors, which are never actively probed)
 router.post('/:id/status', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: OrgScopedRequest, res) => {
     try {
