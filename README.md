@@ -135,7 +135,17 @@ whether your stuff is up.
 
 ## 🚀 Getting Started
 
-### Option 1 — Docker Compose (recommended)
+### Option 1 — One-line install (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fenilto-emitlogic/uptinger/main/install.sh | bash
+```
+
+This clones the repo, generates a `.env` with fresh `ENCRYPTION_KEY`/`JWT_ACCESS_SECRET` secrets, and starts Uptinger with Docker Compose. Requires Docker, Docker Compose, and git. Uptinger will be available at `http://localhost:4173` when it's done.
+
+Prefer to review the script first? It's [install.sh](install.sh) in this repo.
+
+### Option 2 — Docker Compose (manual)
 
 ```bash
 git clone https://github.com/fenilto-emitlogic/uptinger.git
@@ -151,7 +161,7 @@ docker compose up -d --build
 
 Uptinger will be available at `http://localhost:4173` (or your configured `PORT`).
 
-### Option 2 — Run locally with Node
+### Option 3 — Run locally with Node
 
 ```bash
 git clone https://github.com/fenilto-emitlogic/uptinger.git
