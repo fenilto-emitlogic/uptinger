@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a new feature, monitor type, or improvement
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. For anything non-trivial, we may follow up here before it's picked up — please don't open a PR for a large feature without discussing it first (see [CONTRIBUTING.md](../../CONTRIBUTING.md)).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that Uptinger doesn't support today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to see happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you're using today, or other approaches you thought about.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context

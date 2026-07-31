@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / usage help
+    url: https://github.com/fenilto-emitlogic/uptinger/discussions
+    about: Have a question about setup or usage? Start a discussion instead of an issue.
