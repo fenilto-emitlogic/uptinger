@@ -251,6 +251,15 @@
                 return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
             }
 
+            // The server sends `time` pre-formatted in UTC ("HH:MM"). Recompute from the raw UTC
+            // `timestamp` here so labels line up with the browser's local time everywhere else.
+            function formatLocalTime(timestamp) {
+                if (!timestamp) return null;
+                const d = new Date(timestamp);
+                if (Number.isNaN(d.getTime())) return null;
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
             function renderAll() {
                 renderSummary();
                 updateCharts();
@@ -465,13 +474,17 @@
                 }
 
                 if (trendChart) {
+                    // hb.time is precomputed on the server in UTC. Group/sort/label by the local
+                    // time derived from hb.timestamp instead, so this matches every other local-time
+                    // display (Logs table, per-monitor chart) rather than showing UTC.
                     const merged = [];
                     activeMonitors.forEach(m => (m.heartbeats || []).forEach(hb => merged.push(hb)));
-                    merged.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+                    merged.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
                     const byTime = {};
                     merged.forEach(hb => {
-                        if (!byTime[hb.time]) byTime[hb.time] = [];
-                        byTime[hb.time].push(hb.ping || 0);
+                        const label = formatLocalTime(hb.timestamp) || hb.time;
+                        if (!byTime[label]) byTime[label] = [];
+                        byTime[label].push(hb.ping || 0);
                     });
                     const labels = Object.keys(byTime);
                     const data = labels.map(t => {

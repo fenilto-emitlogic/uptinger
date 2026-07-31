@@ -274,12 +274,20 @@ class MonitorModel {
      * has to render an unbounded array).
      */
     getHeartbeatsInRange(id: number, sinceIso?: string, limit = 500): { status: string; ping: number; time: string; timestamp: string | null }[] {
-        const rows = (sinceIso
+        // tbl_monitor_checks.timestamp is stored as SQLite's CURRENT_TIMESTAMP format
+        // ("YYYY-MM-DD HH:MM:SS", UTC, no 'T'/'Z'/milliseconds). Comparing that directly
+        // against a JS ISO string ("...T...Z") is a lexicographic compare where the space
+        // (0x20) in the stored value always sorts before the 'T' (0x54) in the ISO string —
+        // so `timestamp >= isoString` is always false regardless of actual time. Normalize
+        // to the stored format before comparing.
+        const sinceSqlite = sinceIso ? sinceIso.replace('T', ' ').replace(/\.\d+Z$/, '') : undefined;
+
+        const rows = (sinceSqlite
             ? db.prepare(`
                 SELECT * FROM tbl_monitor_checks
                 WHERE monitor_id = ? AND timestamp >= ?
                 ORDER BY id DESC LIMIT ?
-            `).all(id, sinceIso, limit)
+            `).all(id, sinceSqlite, limit)
             : db.prepare(`
                 SELECT * FROM tbl_monitor_checks
                 WHERE monitor_id = ?

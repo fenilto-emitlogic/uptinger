@@ -1036,7 +1036,7 @@
                     hbList.forEach(hb => {
                         const span = document.createElement('span');
                         span.className = `h-9 flex-1 min-w-0 rounded-md ${hb.status === 'up' ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-error)]'} hover:opacity-80 transition-all cursor-pointer`;
-                        span.title = `Ping: ${hb.ping}ms (${hb.time})`;
+                        span.title = `Ping: ${hb.ping}ms (${formatLocalTime(hb.timestamp) || hb.time})`;
                         hbBarContainer.appendChild(span);
                     });
 
@@ -1049,6 +1049,17 @@
                 renderLogsTable();
                 updateResponseChart(m);
                 updateUptimePieChart(m);
+            }
+
+            // The server sends `time` pre-formatted in UTC ("HH:MM"), which doesn't match the
+            // Logs table's display (built client-side via `new Date(...).toLocaleString()`, i.e.
+            // the browser's local timezone). Recompute from the raw UTC `timestamp` here so chart
+            // labels / tooltips line up with what the Logs table shows.
+            function formatLocalTime(timestamp) {
+                if (!timestamp) return null;
+                const d = new Date(timestamp);
+                if (Number.isNaN(d.getTime())) return null;
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
 
             // Not cached: the dashboard live-polls every 5s (LIVE_REFRESH_INTERVAL_MS), so a
@@ -1088,7 +1099,7 @@
                 gradient.addColorStop(0, `color-mix(in srgb, ${lineColor} 35%, transparent)`);
                 gradient.addColorStop(1, `color-mix(in srgb, ${lineColor} 0%, transparent)`);
 
-                chartInstance.data.labels = filtered.map(h => h.time);
+                chartInstance.data.labels = filtered.map(h => formatLocalTime(h.timestamp) || h.time);
                 chartInstance.data.datasets[0].data = filtered.map(h => h.ping);
                 chartInstance.data.datasets[0].borderColor = lineColor;
                 chartInstance.data.datasets[0].pointBackgroundColor = lineColor;
