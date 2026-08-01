@@ -62,6 +62,9 @@ router.post('/login', authRateLimiter, async (req, res) => {
                     first_name: userExist.first_name,
                     last_name: userExist.last_name
                 },
+                // Included for API/mobile clients, which can't rely on the httpOnly
+                // cookie set above — the web app continues to use the cookie.
+                token: accessToken,
                 redirect: '/dashboard'
             });
         }

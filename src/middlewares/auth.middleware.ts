@@ -15,7 +15,13 @@ export async function authenticateTokenMiddelware(
     res: Response,
     next: NextFunction
 ) {
-    const accessToken = req.cookies?.accessToken;
+    const isApiRequest = req.path.startsWith('/api') || req.baseUrl.startsWith('/api');
+    const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : undefined;
+    // Cookie is the web login; Bearer is the mobile app — try cookie first, then Bearer.
+    const accessToken = req.cookies?.accessToken || bearerToken;
+
     if (accessToken) {
         try {
             const decoded = verifyAccessToken(accessToken);
@@ -23,6 +29,7 @@ export async function authenticateTokenMiddelware(
             // treat them as valid rather than force-logging out every existing user.
             if (decoded.sessionId !== undefined && !userSessionModel.isActive(decoded.sessionId)) {
                 res.clearCookie('accessToken');
+                if (isApiRequest) return res.status(401).json({ status: false, code: 401, message: 'Unauthorized', data: {}, error: 'Session expired' });
                 return res.redirect('/auth/login');
             }
             req.user = decoded;
@@ -32,5 +39,6 @@ export async function authenticateTokenMiddelware(
         }
     }
 
+    if (isApiRequest) return res.status(401).json({ status: false, code: 401, message: 'Unauthorized', data: {}, error: 'Authentication required' });
     return res.redirect('/auth/login');
 }

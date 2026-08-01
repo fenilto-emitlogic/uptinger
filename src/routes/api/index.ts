@@ -15,6 +15,12 @@ import emailTemplateRoutes from './email-template.routes.js';
 
 const router = Router();
 
+// Unauthenticated reachability check used by the mobile app to validate a
+// self-hosted server URL before the user attempts to log in.
+router.get('/health', (req, res) => {
+    res.json({ status: true, code: 200, message: 'ok', data: { ok: true, name: 'uptinger' }, error: null });
+});
+
 router.use('/push', pushRoutes);
 router.use('/tags', tagRoutes);
 router.use('/setup', setupRoutes);
