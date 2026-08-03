@@ -12,6 +12,7 @@ set -euo pipefail
 REPO_URL="${UPTINGER_REPO_URL:-https://github.com/fenilto-emitlogic/uptinger.git}"
 INSTALL_DIR="${UPTINGER_INSTALL_DIR:-$PWD/uptinger}"
 APP_PORT="${PORT:-4173}"
+APP_URL="${UPTINGER_APP_URL:-}"
 
 info()  { printf '\033[1;34m[uptinger]\033[0m %s\n' "$1"; }
 warn()  { printf '\033[1;33m[uptinger]\033[0m %s\n' "$1"; }
@@ -81,13 +82,26 @@ else
     fi
   }
 
+  if [ -z "$APP_URL" ] && [ -t 0 ]; then
+    read -r -p "Domain URL in which this instance will be hosted (leave blank for http://localhost:${APP_PORT}): " APP_URL
+  elif [ -z "$APP_URL" ] && [ -r /dev/tty ]; then
+    read -r -p "Domain URL in which this instance will be hosted (leave blank for http://localhost:${APP_PORT}): " APP_URL < /dev/tty || true
+  fi
+  APP_URL="${APP_URL:-http://localhost:${APP_PORT}}"
+  APP_URL="${APP_URL%/}"
+
   sedi "s#^PORT=.*#PORT=${APP_PORT}#" .env
-  sedi "s#^APP_URL=.*#APP_URL=http://localhost:${APP_PORT}#" .env
+  sedi "s#^APP_URL=.*#APP_URL=${APP_URL}#" .env
   sedi "s#^ENCRYPTION_KEY=.*#ENCRYPTION_KEY=${ENCRYPTION_KEY}#" .env
   sedi "s#^JWT_ACCESS_SECRET=.*#JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}#" .env
 
   info "Generated ENCRYPTION_KEY and JWT_ACCESS_SECRET automatically."
-  warn "Review .env and adjust APP_URL / other values for your environment if needed."
+  info "APP_URL set to ${APP_URL} (used as the base URL in emails and links)."
+  if [ "$APP_URL" = "http://localhost:${APP_PORT}" ]; then
+    warn "No public domain set. If you're self-hosting behind a custom domain, re-run with:"
+    warn "  UPTINGER_APP_URL=https://your-domain.com bash install.sh"
+    warn "or edit APP_URL in .env and restart: $COMPOSE up -d"
+  fi
 fi
 
 # --- 4. build & start --------------------------------------------------------
