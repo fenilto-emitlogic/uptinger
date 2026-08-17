@@ -14,6 +14,13 @@ import { monitorNotifyRecipientModel } from '../../models/monitor_notify_recipie
 import { sendTemplatedMail } from '../../utils/notify.utils.js';
 import { organizationModel } from '../../models/organization.model.js';
 import { getAppUrl } from '../../config/email-templates.js';
+import { vpsMetricModel } from '../../models/vps-metric.model.js';
+
+// No registry image: the install command downloads the agent's own source (served
+// straight from this instance, see GET /api/agent/source/:file) and builds it on the
+// VPS itself, so there's never a prebuilt image to trust or keep in sync with the repo.
+const AGENT_LOCAL_IMAGE_TAG = 'uptinger-agent';
+const AGENT_CONTAINER_NAME = 'uptinger-agent';
 
 const router = Router();
 router.use(authenticateTokenMiddelware, attachOrgContext);
@@ -295,13 +302,20 @@ router.post('/', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedR
             configPayload.push_token = crypto.randomBytes(20).toString('hex');
         }
 
+        // 'vps' monitors are fed by the self-hosted Docker agent (see /agent), not probed
+        // by the pinger engine — the token is the only credential the agent presents on
+        // each metrics push, so it's generated with the same entropy as push_token.
+        if (monitorType === 'vps') {
+            configPayload.agent_token = crypto.randomBytes(20).toString('hex');
+        }
+
         const newMonitor = monitorModel.create({
             name,
             type: monitorType,
             url: url || '',
             hostname: hostname || '',
             port: port ? parseInt(port) : undefined,
-            interval_seconds: interval_seconds ? parseInt(interval_seconds) : 60,
+            interval_seconds: interval_seconds ? parseInt(interval_seconds) : (monitorType === 'vps' ? 30 : 60),
             retry_interval: retry_interval ? parseInt(retry_interval) : 60,
             max_retries: retries !== undefined && retries !== '' ? parseInt(retries) : 3,
             tags: Array.isArray(tags) ? tags.join(', ') : (tags || ''),
@@ -534,6 +548,115 @@ router.post('/:id/status', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: Or
         return sendSuccess(res, 'Monitor status updated', { monitor: updated });
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to update monitor status', null, 500);
+    }
+});
+
+// GET /api/monitors/:id/agent-install - Docker one-liner + token for a 'vps' monitor.
+// Requires MONITOR_VIEW (not just anyone) since the token is a live credential that
+// authenticates writes to this monitor's metrics.
+router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (monitor.type !== 'vps') {
+            return sendError(res, 'Agent install info is only available for VPS Performance monitors', null, 400);
+        }
+
+        const token = monitor.parsed_config?.agent_token;
+        if (!token) {
+            return sendError(res, 'This monitor has no agent token — recreate it or regenerate the token', null, 400);
+        }
+
+        const ingestUrl = `${getAppUrl()}/api/agent/${id}/ingest`;
+        const appUrl = getAppUrl();
+        const buildDir = 'uptinger-agent-build';
+
+        // Downloads this instance's own copy of the agent source and builds it locally —
+        // "docker run <image>" would mean either publishing/maintaining a registry image
+        // (extra release surface, a supply-chain trust step for the user) or letting the
+        // user run a build they never see. This way the two files are on disk to read
+        // before `docker build` ever executes them.
+        const dockerRun = [
+            `mkdir -p ${buildDir} && cd ${buildDir}`,
+            `curl -fsSL ${appUrl}/api/agent/source/collect.sh -o collect.sh`,
+            `curl -fsSL ${appUrl}/api/agent/source/Dockerfile -o Dockerfile`,
+            `docker build -t ${AGENT_LOCAL_IMAGE_TAG} .`,
+            [
+                `docker run -d --name ${AGENT_CONTAINER_NAME} --restart unless-stopped`,
+                '  --pid=host --net=host',
+                '  -v /:/host:ro,rslave',
+                `  -e UPTINGER_TOKEN=${token}`,
+                `  -e UPTINGER_URL=${ingestUrl}`,
+                `  ${AGENT_LOCAL_IMAGE_TAG}`
+            ].join(' \\\n')
+        ].join(' && \\\n');
+
+        // A VPS is a different machine than the one running this server — if APP_URL was
+        // never set (or was left at its localhost dev default), the ingest URL only means
+        // "this VPS's own loopback" to the agent, which will never reach us. Surface that
+        // as data instead of silently handing out a command that can't work.
+        const unreachableFromRemote = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(appUrl);
+
+        return sendSuccess(res, 'Agent install info', {
+            token,
+            ingest_url: ingestUrl,
+            image: AGENT_LOCAL_IMAGE_TAG,
+            docker_run: dockerRun,
+            warning: unreachableFromRemote
+                ? 'APP_URL is set to localhost, which a remote VPS cannot reach. Set APP_URL in your .env to this server\'s real public address and restart before installing the agent.'
+                : null
+        });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to build agent install info', null, 500);
+    }
+});
+
+// POST /api/monitors/:id/agent-token/regenerate - Invalidate the current agent token and
+// issue a new one. The old token stops authenticating pushes immediately; the running
+// agent on the VPS needs to be reinstalled with the new one-liner to resume reporting.
+router.post('/:id/agent-token/regenerate', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const existing = monitorModel.findById(id);
+        if (!existing || existing.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (existing.type !== 'vps') {
+            return sendError(res, 'Only VPS Performance monitors have an agent token', null, 400);
+        }
+
+        const newToken = crypto.randomBytes(20).toString('hex');
+        monitorModel.update(id, { configObj: { agent_token: newToken } });
+
+        return sendSuccess(res, 'Agent token regenerated', { token: newToken });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to regenerate agent token', null, 500);
+    }
+});
+
+// GET /api/monitors/:id/vps-metrics?range=1h|6h|24h|7d - Time-series metrics pushed by the agent
+router.get('/:id/vps-metrics', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (monitor.type !== 'vps') {
+            return sendError(res, 'VPS metrics are only available for VPS Performance monitors', null, 400);
+        }
+
+        const range = String(req.query.range || '');
+        const rangeMs = HEARTBEAT_RANGE_MS[range];
+        const sinceIso = rangeMs ? new Date(Date.now() - rangeMs).toISOString() : undefined;
+
+        const metrics = vpsMetricModel.getRange(id, sinceIso);
+        return sendSuccess(res, 'VPS metrics', { metrics });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to fetch VPS metrics', null, 500);
     }
 });
 

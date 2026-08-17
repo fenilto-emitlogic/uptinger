@@ -9,6 +9,7 @@ import userRoutes from './user.routes.js';
 import groupRoutes from './group.routes.js';
 import smtpRoutes from './smtp.routes.js';
 import pushRoutes from './push.routes.js';
+import agentRoutes from './agent.routes.js';
 import tagRoutes from './tag.routes.js';
 import eagleEyeSettingsRoutes from './eagle-eye-settings.routes.js';
 import emailTemplateRoutes from './email-template.routes.js';
@@ -22,6 +23,7 @@ router.get('/health', (req, res) => {
 });
 
 router.use('/push', pushRoutes);
+router.use('/agent', agentRoutes);
 router.use('/tags', tagRoutes);
 router.use('/setup', setupRoutes);
 router.use('/account', accountRoutes);

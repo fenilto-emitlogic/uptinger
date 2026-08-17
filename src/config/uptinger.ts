@@ -14,6 +14,7 @@ import Redis from 'ioredis';
 import { Connection as TediousConnection } from 'tedious';
 import { db } from './db.js';
 import { IFMonitorParsed, monitorModel } from '../models/monitor.model.js';
+import { vpsMetricModel } from '../models/vps-metric.model.js';
 import { userOrgModel } from '../models/user_org.model.js';
 import { monitorNotifyRecipientModel } from '../models/monitor_notify_recipient.model.js';
 import { sendTemplatedMail } from '../utils/notify.utils.js';
@@ -88,6 +89,12 @@ class UptingerEngine {
     private resync(): void {
         const monitors = monitorModel.findAll();
         const liveIds = new Set(monitors.map(m => m.id));
+
+        // 'vps' monitors are passive (agent-pushed, see agent.routes.ts) so they're
+        // excluded from ACTIVE_TYPES below and never scheduled/run through runCheck().
+        // Detecting a dead/uninstalled agent instead means noticing the *absence* of
+        // pushes, which only this periodic sweep can do.
+        this.checkVpsStaleness(monitors.filter(m => m.type === 'vps' && !m.is_paused));
 
         for (const id of this.scheduled.keys()) {
             if (!liveIds.has(id)) {
@@ -165,6 +172,33 @@ class UptingerEngine {
 
         state.failCount = nextFailCount;
         this.scheduleNext(monitorId, Math.max(delaySeconds, 1) * 1000);
+    }
+
+    /**
+     * Marks a 'vps' monitor OFFLINE once its agent stops pushing for 3x its expected
+     * interval (default push interval is 30s, so 90s of silence by default) — covers the
+     * agent container being stopped, the VPS going down, or a network/firewall change,
+     * none of which the agent itself can report since it's the thing that went quiet.
+     */
+    private checkVpsStaleness(vpsMonitors: IFMonitorParsed[]): void {
+        for (const monitor of vpsMonitors) {
+            if (monitor.status !== 'ONLINE') continue;
+
+            const staleAfterSeconds = Math.max(monitor.interval_seconds || 30, 30) * 3;
+            const latest = vpsMetricModel.latest(monitor.id);
+            const lastSeenMs = latest ? new Date(latest.timestamp).getTime() : new Date(monitor.created_at || 0).getTime();
+            if (Date.now() - lastSeenMs < staleAfterSeconds * 1000) continue;
+
+            const msg = `No metrics received from agent in over ${staleAfterSeconds}s`;
+            db.prepare(`INSERT INTO tbl_monitor_checks (monitor_id, status, ping_ms, status_code, msg) VALUES (?, 'OFFLINE', 0, 0, ?)`)
+                .run(monitor.id, msg);
+            db.prepare(`UPDATE tbl_monitors SET status = 'OFFLINE', updated_at = ? WHERE id = ?`)
+                .run(new Date().toISOString(), monitor.id);
+
+            if (monitor.notify_on_down) {
+                this.notify(monitor, 'down', { status_message: msg });
+            }
+        }
     }
 
     /** All retries exhausted for this check cycle — stop hammering a dead target and flip it to paused. */

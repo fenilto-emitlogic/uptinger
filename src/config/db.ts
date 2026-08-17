@@ -278,6 +278,33 @@ db.exec(`
         UNIQUE(org_id, type)
     );
 
+    -- Time-series rows pushed by the lightweight Docker agent running on a user's VPS
+    -- (see /agent in the repo root). One row per push interval; monitor_id must be a
+    -- monitor of type 'vps'. Disk/network are stored as JSON since a host can report
+    -- an arbitrary number of mounts/interfaces.
+    CREATE TABLE IF NOT EXISTS tbl_vps_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        cpu_pct REAL,
+        load1 REAL,
+        load5 REAL,
+        load15 REAL,
+        ram_used_mb INTEGER,
+        ram_total_mb INTEGER,
+        swap_used_mb INTEGER,
+        swap_total_mb INTEGER,
+        disks TEXT DEFAULT '[]',
+        net_rx_bytes INTEGER,
+        net_tx_bytes INTEGER,
+        uptime_seconds INTEGER,
+        nginx_active_connections INTEGER,
+        nginx_requests_total INTEGER,
+        nginx_recent_errors TEXT DEFAULT '[]',
+        agent_version TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS tbl_password_resets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -305,6 +332,7 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_tags_org_id ON tbl_tags(org_id);
     CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON tbl_user_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON tbl_password_resets(user_id);
+    CREATE INDEX IF NOT EXISTS idx_vps_metrics_monitor_id_timestamp ON tbl_vps_metrics(monitor_id, timestamp);
 `);
 
 // Backfill: orgs created before roles existed get default Admin/Member roles,
@@ -346,6 +374,7 @@ const monitorTypeSeed: Array<{ key: string; label: string; description: string; 
     { key: 'ping', label: 'Ping', description: 'Send ICMP pings to check host reachability', icon: 'activity', category: 'General', sort_order: 4 },
     { key: 'dns', label: 'DNS', description: 'Resolve a DNS record and validate the response', icon: 'network', category: 'General', sort_order: 5 },
     { key: 'docker', label: 'Docker Container', description: 'Monitor the running state of a Docker container', icon: 'box', category: 'General', sort_order: 6 },
+    { key: 'vps', label: 'VPS Performance', description: 'CPU, RAM, disk, network and Nginx stats pushed by a lightweight agent installed on your server', icon: 'cpu', category: 'General', sort_order: 7 },
     { key: 'push', label: 'Push', description: 'Passive monitor that expects periodic pings from your service', icon: 'upload', category: 'Passive', sort_order: 1 },
     { key: 'manual', label: 'Manual', description: 'Manually managed status, not actively checked', icon: 'hand', category: 'Passive', sort_order: 2 },
     { key: 'smtp', label: 'SMTP', description: 'Check an SMTP mail server connection', icon: 'mail', category: 'Specific', sort_order: 1 },

@@ -218,8 +218,99 @@
                                 </div>
                             </div>
 
+                            <!-- VPS PERFORMANCE CARD (shown only for 'vps' type monitors) -->
+                            <div id="vpsPerformanceCard" class="hidden space-y-6">
+                                <div
+                                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-5">
+                                    <div class="flex items-center justify-between flex-wrap gap-3">
+                                        <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
+                                            <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                            </svg>
+                                            <span>VPS Performance</span>
+                                        </h2>
+                                        <div class="flex items-center gap-2">
+                                            <span id="vpsLastSeen" class="text-[11px] font-mono text-[var(--color-text-muted)]"></span>
+                                            <button type="button" onclick="showVpsInstallModal()"
+                                                class="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors">
+                                                Agent Install Command
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="vpsEmptyState" class="hidden text-center py-8 space-y-2">
+                                        <p class="text-sm font-semibold text-[var(--color-text-primary)]">Waiting for the agent to report&hellip;</p>
+                                        <p class="text-xs text-[var(--color-text-secondary)]">No metrics have been received yet. Install the agent on your VPS using the button above.</p>
+                                    </div>
+
+                                    <div id="vpsMetricsBody" class="space-y-5">
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">CPU</span>
+                                                    <span id="vpsCpuText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                                </div>
+                                                <div class="h-2.5 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
+                                                    <div id="vpsCpuBar" class="h-full rounded-full bg-[var(--color-primary)] transition-all" style="width:0%"></div>
+                                                </div>
+                                                <p id="vpsLoadText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">RAM</span>
+                                                    <span id="vpsRamText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                                </div>
+                                                <div class="h-2.5 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
+                                                    <div id="vpsRamBar" class="h-full rounded-full bg-[var(--color-secondary)] transition-all" style="width:0%"></div>
+                                                </div>
+                                                <p id="vpsSwapText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Uptime</span>
+                                                    <span id="vpsUptimeText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                                </div>
+                                                <p id="vpsNetText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Storage</h4>
+                                            <div id="vpsDisksList" class="space-y-3"></div>
+                                        </div>
+
+                                        <div class="relative h-56 w-full pt-2">
+                                            <canvas id="vpsHistoryChart"></canvas>
+                                        </div>
+
+                                        <div>
+                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2 flex items-center gap-2">
+                                                <span>Nginx</span>
+                                                <span id="vpsNginxStatusDot" class="w-1.5 h-1.5 rounded-full bg-[var(--color-text-muted)]"></span>
+                                            </h4>
+                                            <div id="vpsNginxNotDetected" class="text-xs text-[var(--color-text-muted)]">Not detected on this host (or stub_status isn't enabled).</div>
+                                            <div id="vpsNginxStats" class="hidden grid grid-cols-2 gap-4 mb-3">
+                                                <div class="p-3 rounded-xl bg-[var(--color-bg-main)] border border-[var(--color-border)]">
+                                                    <div class="text-[10px] text-[var(--color-text-muted)] uppercase font-semibold">Active Connections</div>
+                                                    <div id="vpsNginxActive" class="text-lg font-bold text-[var(--color-text-primary)] font-mono">-</div>
+                                                </div>
+                                                <div class="p-3 rounded-xl bg-[var(--color-bg-main)] border border-[var(--color-border)]">
+                                                    <div class="text-[10px] text-[var(--color-text-muted)] uppercase font-semibold">Total Requests</div>
+                                                    <div id="vpsNginxRequests" class="text-lg font-bold text-[var(--color-text-primary)] font-mono">-</div>
+                                                </div>
+                                            </div>
+                                            <div id="vpsNginxErrorsWrap" class="hidden">
+                                                <h5 class="text-[11px] font-semibold text-[var(--color-text-secondary)] mb-1.5">Recent error.log lines</h5>
+                                                <div id="vpsNginxErrors"
+                                                    class="max-h-40 overflow-y-auto text-[11px] font-mono text-[var(--color-error)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- KEY METRICS GRID CARD -->
-                            <div
+                            <div id="httpMetricsCard"
                                 class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl">
                                 <div
                                     class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 text-center divide-x-0 sm:divide-x divide-[color-mix(in_srgb,var(--color-bg-surface)_80%,transparent)]">
@@ -283,7 +374,7 @@
                             </div>
 
                             <!-- RESPONSE TIME + UPTIME/DOWNTIME CHART ROW -->
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div id="responseChartRow" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                                 <!-- RESPONSE TIME ANALYTICS CHART CARD -->
                                 <div
@@ -960,6 +1051,225 @@
                 if (downEl) downEl.innerText = `${downtimePct.toFixed(2)}%`;
             }
 
+            // ---- VPS Performance panel (type === 'vps') ----
+            let vpsChartInstance = null;
+            let vpsRequestToken = 0;
+
+            function initVpsChart() {
+                const canvas = document.getElementById('vpsHistoryChart');
+                if (!canvas || vpsChartInstance) return;
+                const ctx = canvas.getContext('2d');
+                const primary = themeColor('--color-primary');
+                const secondary = themeColor('--color-secondary');
+                const border = themeColor('--color-border');
+                const bgSurface = themeColor('--color-bg-surface');
+                const textSecondary = themeColor('--color-text-secondary');
+                const textMuted = themeColor('--color-text-muted');
+
+                vpsChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            { label: 'CPU %', data: [], borderColor: primary, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+                            { label: 'RAM %', data: [], borderColor: secondary, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: true, labels: { color: textSecondary, font: { size: 10 } } },
+                            tooltip: {
+                                backgroundColor: bgSurface, titleColor: textSecondary, borderColor: border, borderWidth: 1, padding: 10,
+                                callbacks: { label: context => `${context.dataset.label}: ${context.raw}%` }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 } } },
+                            y: { min: 0, max: 100, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' } }
+                        }
+                    }
+                });
+            }
+
+            function formatMb(mb) {
+                if (mb == null) return 'N/A';
+                return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+            }
+
+            function formatBytesRate(bytes) {
+                if (bytes == null) return 'N/A';
+                if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+                if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+                if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                return `${bytes} B`;
+            }
+
+            function formatUptime(seconds) {
+                if (seconds == null) return 'N/A';
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                if (days > 0) return `${days}d ${hours}h`;
+                const mins = Math.floor((seconds % 3600) / 60);
+                return `${hours}h ${mins}m`;
+            }
+
+            function pctBarColor(pct) {
+                if (pct >= 90) return '--color-error';
+                if (pct >= 75) return '--color-warning';
+                return '--color-primary';
+            }
+
+            function fetchAndRenderVpsMetrics(m) {
+                const token = ++vpsRequestToken;
+                fetch(`/api/monitors/${m.id}/vps-metrics?range=1h`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (token !== vpsRequestToken || activeId !== m.id) return; // superseded
+                        const metrics = (res.status && res.data && res.data.metrics) ? res.data.metrics : [];
+                        renderVpsPerformance(metrics);
+                    })
+                    .catch(() => { });
+            }
+
+            function renderVpsPerformance(metrics) {
+                const emptyState = document.getElementById('vpsEmptyState');
+                const body = document.getElementById('vpsMetricsBody');
+                if (metrics.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    body.classList.add('hidden');
+                    document.getElementById('vpsLastSeen').innerText = '';
+                    return;
+                }
+                emptyState.classList.add('hidden');
+                body.classList.remove('hidden');
+
+                const latest = metrics[metrics.length - 1];
+
+                document.getElementById('vpsLastSeen').innerText = latest.timestamp
+                    ? `Last report: ${new Date(latest.timestamp).toLocaleTimeString()}`
+                    : '';
+
+                const cpuPct = Math.round(latest.cpu_pct || 0);
+                document.getElementById('vpsCpuText').innerText = `${cpuPct}%`;
+                const cpuBar = document.getElementById('vpsCpuBar');
+                cpuBar.style.width = `${Math.min(100, cpuPct)}%`;
+                cpuBar.className = `h-full rounded-full bg-[var(${pctBarColor(cpuPct)})] transition-all`;
+                document.getElementById('vpsLoadText').innerText = `Load: ${(latest.load1 ?? 0).toFixed(2)}, ${(latest.load5 ?? 0).toFixed(2)}, ${(latest.load15 ?? 0).toFixed(2)}`;
+
+                const ramTotal = latest.ram_total_mb || 0;
+                const ramPct = ramTotal > 0 ? Math.round((latest.ram_used_mb / ramTotal) * 100) : 0;
+                document.getElementById('vpsRamText').innerText = `${ramPct}%`;
+                const ramBar = document.getElementById('vpsRamBar');
+                ramBar.style.width = `${Math.min(100, ramPct)}%`;
+                ramBar.className = `h-full rounded-full bg-[var(${pctBarColor(ramPct)})] transition-all`;
+                document.getElementById('vpsSwapText').innerText = `${formatMb(latest.ram_used_mb)} / ${formatMb(latest.ram_total_mb)}`
+                    + (latest.swap_total_mb ? ` · Swap ${formatMb(latest.swap_used_mb)}/${formatMb(latest.swap_total_mb)}` : '');
+
+                document.getElementById('vpsUptimeText').innerText = formatUptime(latest.uptime_seconds);
+                document.getElementById('vpsNetText').innerText = `↓ ${formatBytesRate(latest.net_rx_bytes)}  ↑ ${formatBytesRate(latest.net_tx_bytes)}`;
+
+                const disksContainer = document.getElementById('vpsDisksList');
+                disksContainer.innerHTML = '';
+                const disks = Array.isArray(latest.disks) ? latest.disks : [];
+                if (disks.length === 0) {
+                    disksContainer.innerHTML = '<p class="text-xs text-[var(--color-text-muted)]">No disk data reported.</p>';
+                } else {
+                    disks.forEach(d => {
+                        const pct = d.total_mb > 0 ? Math.round((d.used_mb / d.total_mb) * 100) : 0;
+                        const row = document.createElement('div');
+                        row.innerHTML = `
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono text-[var(--color-text-secondary)]">${escapeHtml(d.mount)}</span>
+                                <span class="text-xs font-mono text-[var(--color-text-primary)]">${formatMb(d.used_mb)} / ${formatMb(d.total_mb)} (${pct}%)</span>
+                            </div>
+                            <div class="h-2 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
+                                <div class="h-full rounded-full bg-[var(${pctBarColor(pct)})]" style="width:${Math.min(100, pct)}%"></div>
+                            </div>`;
+                        disksContainer.appendChild(row);
+                    });
+                }
+
+                const hasNginx = latest.nginx_active_connections != null;
+                document.getElementById('vpsNginxNotDetected').classList.toggle('hidden', hasNginx);
+                document.getElementById('vpsNginxStats').classList.toggle('hidden', !hasNginx);
+                document.getElementById('vpsNginxStatusDot').className = `w-1.5 h-1.5 rounded-full ${hasNginx ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-text-muted)]'}`;
+                if (hasNginx) {
+                    document.getElementById('vpsNginxActive').innerText = latest.nginx_active_connections;
+                    document.getElementById('vpsNginxRequests').innerText = latest.nginx_requests_total ?? 'N/A';
+                }
+
+                const errors = Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
+                const errorsWrap = document.getElementById('vpsNginxErrorsWrap');
+                errorsWrap.classList.toggle('hidden', errors.length === 0);
+                if (errors.length > 0) {
+                    document.getElementById('vpsNginxErrors').innerHTML = errors.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('');
+                }
+
+                initVpsChart();
+                if (vpsChartInstance) {
+                    vpsChartInstance.data.labels = metrics.map(mt => formatLocalTime(mt.timestamp));
+                    vpsChartInstance.data.datasets[0].data = metrics.map(mt => Math.round(mt.cpu_pct || 0));
+                    vpsChartInstance.data.datasets[1].data = metrics.map(mt => mt.ram_total_mb > 0 ? Math.round((mt.ram_used_mb / mt.ram_total_mb) * 100) : 0);
+                    vpsChartInstance.update('none');
+                }
+            }
+
+            function showVpsInstallModal() {
+                const m = monitors.find(x => x.id === activeId);
+                if (!m) return;
+                fetch(`/api/monitors/${m.id}/agent-install`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.status || !res.data || !res.data.docker_run) {
+                            showToast(res.message || 'Failed to load install command', 'error');
+                            return;
+                        }
+
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:1rem;';
+                        const card = document.createElement('div');
+                        card.style.cssText = 'width:100%;max-width:38rem;background:var(--color-bg-surface);border:1px solid color-mix(in srgb, var(--color-border) 80%, transparent);border-radius:1rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);padding:1.5rem;';
+                        card.innerHTML = `
+                            <h3 style="font-size:1rem;font-weight:800;color:var(--color-text-primary);margin:0 0 0.75rem">Agent install command</h3>
+                            ${res.data.warning ? `<p style="font-size:0.8125rem;line-height:1.5;margin:0 0 1rem;padding:0.75rem;border-radius:0.5rem;background:color-mix(in srgb, var(--color-error) 12%, transparent);border:1px solid color-mix(in srgb, var(--color-error) 30%, transparent);color:var(--color-error);font-weight:600">${res.data.warning}</p>` : ''}
+                            <pre style="white-space:pre-wrap;word-break:break-all;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.875rem;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);margin:0 0 1rem;max-height:16rem;overflow:auto"></pre>
+                            <div style="display:flex;justify-content:space-between;gap:0.5rem">
+                                <button type="button" data-regen style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;background:transparent;color:var(--color-error);border:1px solid color-mix(in srgb, var(--color-error) 40%, transparent);cursor:pointer">Regenerate Token</button>
+                                <div style="display:flex;gap:0.5rem">
+                                    <button type="button" data-copy style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;background:transparent;color:var(--color-text-secondary);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);cursor:pointer">Copy</button>
+                                    <button type="button" data-close style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;border:none;cursor:pointer;color:var(--color-bg-main);background:var(--color-primary)">Close</button>
+                                </div>
+                            </div>
+                        `;
+                        card.querySelector('pre').textContent = res.data.docker_run;
+                        overlay.appendChild(card);
+                        document.body.appendChild(overlay);
+
+                        const close = () => overlay.remove();
+                        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+                        card.querySelector('[data-close]').addEventListener('click', close);
+                        card.querySelector('[data-copy]').addEventListener('click', () => {
+                            navigator.clipboard.writeText(res.data.docker_run).then(() => showToast('Copied to clipboard', 'success'));
+                        });
+                        card.querySelector('[data-regen]').addEventListener('click', async () => {
+                            const ok = await openConfirmModal({
+                                title: 'Regenerate agent token?',
+                                message: 'The old token stops working immediately. You will need to reinstall the agent on the VPS with the new command.',
+                                confirmLabel: 'Regenerate',
+                                danger: true
+                            });
+                            if (!ok) return;
+                            fetch(`/api/monitors/${m.id}/agent-token/regenerate`, { method: 'POST' })
+                                .then(r => r.json())
+                                .then(() => { close(); showVpsInstallModal(); });
+                        });
+                    })
+                    .catch(() => showToast('Failed to load install command', 'error'));
+            }
+
             function selectMonitor(id) {
                 activeId = id;
                 setMonitorIdInUrl(id);
@@ -1051,8 +1361,21 @@
                 }
 
                 renderLogsTable();
-                updateResponseChart(m);
-                updateUptimePieChart(m);
+
+                const isVps = m.type === 'vps';
+                const vpsCard = document.getElementById('vpsPerformanceCard');
+                const httpCard = document.getElementById('httpMetricsCard');
+                const chartRow = document.getElementById('responseChartRow');
+                if (vpsCard) vpsCard.classList.toggle('hidden', !isVps);
+                if (httpCard) httpCard.classList.toggle('hidden', isVps);
+                if (chartRow) chartRow.classList.toggle('hidden', isVps);
+
+                if (isVps) {
+                    fetchAndRenderVpsMetrics(m);
+                } else {
+                    updateResponseChart(m);
+                    updateUptimePieChart(m);
+                }
             }
 
             // The server sends `time` pre-formatted in UTC ("HH:MM"), which doesn't match the
