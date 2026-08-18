@@ -117,10 +117,13 @@ router.post('/:id/ingest', agentIngestRateLimiter, (req, res) => {
 
         const priorStatus = monitor.status;
         db.prepare(`UPDATE tbl_monitors SET status = 'ONLINE', updated_at = ? WHERE id = ?`).run(new Date().toISOString(), id);
-        if (priorStatus !== 'ONLINE') {
-            db.prepare(`INSERT INTO tbl_monitor_checks (monitor_id, status, ping_ms, status_code, msg) VALUES (?, 'ONLINE', 0, 200, ?)`)
-                .run(id, 'Agent reporting resumed');
-        }
+        // Log every ingest, not just the transition into ONLINE — matches how push
+        // monitors populate tbl_monitor_checks (push.routes.ts), which is what the
+        // Heartbeat Event Log reads from. Without this, the log only ever gets one
+        // entry (the first time the agent comes online) even though it keeps reporting.
+        const msg = priorStatus !== 'ONLINE' ? 'Agent reporting resumed' : 'Agent heartbeat';
+        db.prepare(`INSERT INTO tbl_monitor_checks (monitor_id, status, ping_ms, status_code, msg) VALUES (?, 'ONLINE', 0, 200, ?)`)
+            .run(id, msg);
 
         return sendSuccess(res, 'Metrics recorded');
     } catch (err: any) {
