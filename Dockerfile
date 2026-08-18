@@ -38,6 +38,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/views ./src/views
+COPY --from=builder /app/agent ./agent
 
 RUN mkdir -p data
 
