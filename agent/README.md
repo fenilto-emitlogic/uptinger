@@ -26,6 +26,27 @@ Docker itself needs to be installed on the monitored server.
    OFFLINE itself (`checkVpsStaleness()` in [`src/config/uptinger.ts`](../src/config/uptinger.ts))
    — the agent can't report "I'm down," so the server has to notice the silence.
 
+## Nginx behind Docker (its own container/network)
+
+By default the agent looks for Nginx's `stub_status` at `http://127.0.0.1/nginx_status`,
+which only works if Nginx runs directly on the host (the agent's `--net=host` puts it on
+the same loopback). If Nginx runs in its own container — e.g. on a `nginx-network` Docker
+network — it isn't reachable on the host's loopback at all, so this needs to be pointed
+at wherever `stub_status` actually is:
+
+- If Nginx publishes a port to the host (`-p 8080:80`), set
+  `UPTINGER_NGINX_STATUS_URL=http://127.0.0.1:8080/nginx_status`.
+- If not, attach the agent container to the same Docker network as Nginx
+  (`docker network connect nginx-network uptinger-agent`, or add `--network nginx-network`
+  to the install command's `docker run`) and point at the container by name:
+  `UPTINGER_NGINX_STATUS_URL=http://nginx:80/nginx_status`.
+
+Either way, `stub_status` needs to actually be enabled in the Nginx config first
+(`location /nginx_status { stub_status; }`, restricted to internal access).
+
+Traefik isn't supported yet — the agent only speaks Nginx's `stub_status` format, not
+Traefik's Prometheus metrics endpoint.
+
 ## Trust model / what the container can see
 
 - `-v /:/host:ro,rslave` — **read-only** bind mount of the host root, needed to read

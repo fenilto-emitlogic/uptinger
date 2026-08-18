@@ -574,6 +574,17 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
         const appUrl = getAppUrl();
         const buildDir = 'uptinger-agent-build';
 
+        // Optional: when Nginx runs in its own Docker container (not directly on the
+        // host), 127.0.0.1 inside the agent's --net=host namespace can't see it. Lets
+        // the caller supply where stub_status actually lives (a published host port,
+        // or a container:port reachable if --network is also set to Nginx's network)
+        // and/or a Docker network for the agent to join instead of --net=host.
+        // Free-text passthrough into a shell one-liner: quote to prevent the value
+        // from being interpreted by the shell (word-splitting, globbing, `$(...)`, etc).
+        const shQuote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+        const nginxStatusUrl = typeof req.query.nginx_status_url === 'string' ? req.query.nginx_status_url.trim() : '';
+        const dockerNetwork = typeof req.query.docker_network === 'string' ? req.query.docker_network.trim() : '';
+
         // Downloads this instance's own copy of the agent source and builds it locally —
         // "docker run <image>" would mean either publishing/maintaining a registry image
         // (extra release surface, a supply-chain trust step for the user) or letting the
@@ -586,10 +597,11 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
             `docker build -t ${AGENT_LOCAL_IMAGE_TAG} .`,
             [
                 `docker run -d --name ${AGENT_CONTAINER_NAME} --restart unless-stopped`,
-                '  --pid=host --net=host',
+                dockerNetwork ? `  --pid=host --network ${shQuote(dockerNetwork)}` : '  --pid=host --net=host',
                 '  -v /:/host:ro,rslave',
                 `  -e UPTINGER_TOKEN=${token}`,
                 `  -e UPTINGER_URL=${ingestUrl}`,
+                ...(nginxStatusUrl ? [`  -e UPTINGER_NGINX_STATUS_URL=${shQuote(nginxStatusUrl)}`] : []),
                 `  ${AGENT_LOCAL_IMAGE_TAG}`
             ].join(' \\\n')
         ].join(' && \\\n');

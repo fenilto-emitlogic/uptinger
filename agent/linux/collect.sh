@@ -13,6 +13,11 @@ set -u
 : "${UPTINGER_TOKEN:?UPTINGER_TOKEN is required}"
 INTERVAL="${UPTINGER_INTERVAL:-30}"
 HOST_ROOT="${UPTINGER_HOST_ROOT:-/host}"
+# Override when Nginx isn't on the host's own loopback — e.g. it runs in its own
+# Docker container/network. Point this at wherever stub_status is actually reachable
+# from this container (a published host port, or a container:port on a shared
+# --network this agent was also attached to).
+NGINX_STATUS_URL="${UPTINGER_NGINX_STATUS_URL:-http://127.0.0.1/nginx_status}"
 AGENT_VERSION="1.0.0"
 
 # Never crash the loop on a transient host-file read/parse failure — a monitoring
@@ -78,16 +83,29 @@ read_net() {
 # Emits one JSON object per real (non-virtual) host mount. Relies on the container
 # being started with -v /:/host:ro,rslave so host submounts propagate under /host —
 # without rslave only the top-level root mount would be visible here.
+#
+# The `overlay` fs type is excluded because it's what Docker uses for *container*
+# rootfs/layer mounts, which would otherwise flood this list with junk. But some VPS
+# providers (and container-based hosts) also use overlay/overlay2 for the real host
+# root — excluding it unconditionally then leaves nothing at all. So: filter it out
+# of the general scan, then fall back to reporting "/" by itself (whatever its fs
+# type actually is) if that filtering left us with zero mounts.
 read_disks_json() {
-    first=1
-    printf '['
-    awk '
+    entries=$(awk '
         $3 !~ /^(tmpfs|devtmpfs|overlay|squashfs|proc|sysfs|cgroup|cgroup2|devpts|mqueue|debugfs|tracefs|securityfs|pstore|autofs|nsfs|bpf)$/ {print $2}
     ' "$HOST_ROOT/proc/mounts" 2>/dev/null | sort -u | while IFS= read -r mnt; do
         path="$HOST_ROOT$mnt"
         [ -d "$path" ] || continue
         df -P "$path" 2>/dev/null | awk -v m="$mnt" 'NR==2{printf "%s\t%d\t%d\n", m, $2/1024, $3/1024}'
-    done | while IFS="$(printf '\t')" read -r mnt total used; do
+    done)
+
+    if [ -z "$entries" ]; then
+        entries=$(df -P "$HOST_ROOT" 2>/dev/null | awk 'NR==2{printf "/\t%d\t%d\n", $2/1024, $3/1024}')
+    fi
+
+    first=1
+    printf '['
+    printf '%s\n' "$entries" | while IFS="$(printf '\t')" read -r mnt total used; do
         [ -n "$mnt" ] || continue
         if [ "$first" -eq 1 ]; then first=0; else printf ','; fi
         printf '{"mount":"%s","used_mb":%d,"total_mb":%d}' "$(json_escape "$mnt")" "${used:-0}" "${total:-0}"
@@ -100,7 +118,7 @@ read_disks_json() {
 # installed or stub_status isn't enabled — this agent should work on any VPS, not just
 # ones running Nginx.
 read_nginx_json() {
-    body=$(curl -fsS --max-time 3 http://127.0.0.1/nginx_status 2>/dev/null) || return 1
+    body=$(curl -fsS --max-time 3 "$NGINX_STATUS_URL" 2>/dev/null) || return 1
     active=$(echo "$body" | awk '/Active connections/{print $3}')
     requests=$(echo "$body" | awk 'NR==3{print $3}')
     [ -n "$active" ] || return 1
