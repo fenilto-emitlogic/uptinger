@@ -145,7 +145,7 @@ This clones the repo, generates a `.env` with fresh `ENCRYPTION_KEY`/`JWT_ACCESS
 
 Prefer to review the script first? It's [install.sh](install.sh) in this repo.
 
-### Option 2 — Docker Compose (manual)
+### Option 2 — Docker Compose (build from source)
 
 ```bash
 git clone https://github.com/fenilto-emitlogic/uptinger.git
@@ -161,7 +161,76 @@ docker compose up -d --build
 
 Uptinger will be available at `http://localhost:4173` (or your configured `PORT`).
 
-### Option 3 — Run locally with Node
+### Option 3 — Docker Compose (pull the prebuilt image)
+
+No need to clone the repo — every push to `main` and every tagged release is published to GHCR as
+[`ghcr.io/fenilto-emitlogic/uptinger`](https://github.com/fenilto-emitlogic/uptinger/pkgs/container/uptinger).
+Just create a `.env` and a `docker-compose.yml` that point at the image:
+
+```bash
+mkdir uptinger && cd uptinger
+```
+
+`.env`:
+
+```bash
+# Port the app listens on inside the container
+PORT=4173
+
+# Public URL used to build links in emails (password reset, invites, etc.) and, for
+# VPS Performance monitors, the address the agent running on your remote VPS pushes
+# metrics back to — if left as localhost, agents on other machines can't reach it.
+APP_URL=http://localhost:4173
+
+# Used to encrypt sensitive data at rest (e.g. stored SMTP passwords).
+# Generate your own with: openssl rand -hex 32
+ENCRYPTION_KEY=
+
+# Secret used to sign JWT access tokens.
+# Generate your own with: openssl rand -hex 32
+JWT_ACCESS_SECRET=
+
+# How long an access token stays valid for a normal login
+JWT_ACCESS_EXPIRES_IN=60m
+
+# How long an access token stays valid when "remember me" is used
+ACCESS_EXPIRES_IN_REMEMBERED=365d
+```
+
+`docker-compose.yml`:
+
+```yaml
+services:
+  uptinger:
+    image: ghcr.io/fenilto-emitlogic/uptinger:latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4173}:4173"
+    env_file:
+      - .env
+    environment:
+      - PORT=4173
+    volumes:
+      - uptinger-data:/app/data
+    # Needed by the `ping` monitor type, which shells out to the system ping binary
+    cap_add:
+      - NET_RAW
+
+volumes:
+  uptinger-data:
+```
+
+Then pull and start it:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Uptinger will be available at `http://localhost:4173` (or your configured `PORT`). Pin a specific
+version instead of `latest` by using a tag like `ghcr.io/fenilto-emitlogic/uptinger:v1.2.0`.
+
+### Option 4 — Run locally with Node
 
 ```bash
 git clone https://github.com/fenilto-emitlogic/uptinger.git
