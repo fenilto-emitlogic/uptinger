@@ -618,11 +618,18 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
         // Same install, but as a docker-compose.yml — `docker compose up -d` / `down`
         // instead of a one-shot `docker run`, so the agent can be stopped/restarted/
         // rebuilt without hunting down the original run command again.
+        // When the caller didn't supply an override, still show the var commented out
+        // (rather than omitting it) so anyone editing the generated file later knows
+        // it exists and can just uncomment + fill it in instead of hunting the docs.
         const composeEnvLines = [
             `      - UPTINGER_TOKEN=${yamlQuote(token)}`,
             `      - UPTINGER_URL=${yamlQuote(ingestUrl)}`,
-            ...(nginxStatusUrl ? [`      - UPTINGER_NGINX_STATUS_URL=${yamlQuote(nginxStatusUrl)}`] : []),
-            ...(nginxLogDir ? [`      - UPTINGER_NGINX_LOG_DIR=${yamlQuote(nginxLogDir)}`] : [])
+            nginxStatusUrl
+                ? `      - UPTINGER_NGINX_STATUS_URL=${yamlQuote(nginxStatusUrl)}`
+                : `      # - UPTINGER_NGINX_STATUS_URL=${yamlQuote('http://nginx:8081/nginx_status')}  # uncomment + point at your stub_status endpoint if Nginx runs in its own container`,
+            nginxLogDir
+                ? `      - UPTINGER_NGINX_LOG_DIR=${yamlQuote(nginxLogDir)}`
+                : `      # - UPTINGER_NGINX_LOG_DIR=${yamlQuote('/path/to/nginx/logs')}  # uncomment + point at the real host directory your Nginx logs are bind-mounted from`
         ].join('\n');
 
         const dockerCompose = dockerNetwork
