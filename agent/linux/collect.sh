@@ -137,8 +137,19 @@ read_nginx_json() {
         [ -n "$errors_json" ] || errors_json='[]'
     fi
 
-    printf '{"nginx_active_connections":%d,"nginx_requests_total":%d,"nginx_recent_errors":%s}' \
-        "${active:-0}" "${requests:-0}" "$errors_json"
+    # Only ever the last 20 lines of the current file — never the whole 500MB+ file,
+    # and nothing is uploaded/copied wholesale to the server, just this bounded tail
+    # each push interval (same shape as the error-log sampling above).
+    access_json='[]'
+    if [ -f "$HOST_ROOT$NGINX_LOG_DIR/access.log" ]; then
+        access_json=$(tail -n 20 "$HOST_ROOT$NGINX_LOG_DIR/access.log" 2>/dev/null | \
+            while IFS= read -r l; do printf '%s\n' "$(json_escape "$l")"; done | \
+            awk 'BEGIN{printf "["} {if(NR>1) printf ","; printf "\"%s\"", $0} END{printf "]"}')
+        [ -n "$access_json" ] || access_json='[]'
+    fi
+
+    printf '{"nginx_active_connections":%d,"nginx_requests_total":%d,"nginx_recent_errors":%s,"nginx_recent_access":%s}' \
+        "${active:-0}" "${requests:-0}" "$errors_json" "$access_json"
 }
 
 build_and_send() {

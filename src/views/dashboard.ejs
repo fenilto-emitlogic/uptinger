@@ -219,96 +219,112 @@
                             </div>
 
                             <!-- VPS PERFORMANCE CARD (shown only for 'vps' type monitors) -->
-                            <div id="vpsPerformanceCard" class="hidden space-y-6">
-                                <div
-                                    class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-5">
-                                    <div class="flex items-center justify-between flex-wrap gap-3">
-                                        <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
-                                            <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                            </svg>
-                                            <span>VPS Performance</span>
-                                        </h2>
-                                        <div class="flex items-center gap-2">
-                                            <span id="vpsLastSeen" class="text-[11px] font-mono text-[var(--color-text-muted)]"></span>
-                                            <button type="button" onclick="showVpsInstallModal()"
-                                                class="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors">
-                                                Agent Install Command
-                                            </button>
-                                        </div>
+                            <div id="vpsPerformanceCard" class="hidden space-y-5">
+                                <div class="flex items-center justify-between flex-wrap gap-3">
+                                    <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                        </svg>
+                                        <span>VPS Performance</span>
+                                    </h2>
+                                    <div class="flex items-center gap-2">
+                                        <span id="vpsLastSeen" class="text-[11px] font-mono text-[var(--color-text-muted)]"></span>
+                                        <button type="button" onclick="showVpsInstallModal()"
+                                            class="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors">
+                                            Agent Install Command
+                                        </button>
                                     </div>
+                                </div>
 
-                                    <div id="vpsEmptyState" class="hidden text-center py-8 space-y-2">
-                                        <p class="text-sm font-semibold text-[var(--color-text-primary)]">Waiting for the agent to report&hellip;</p>
-                                        <p class="text-xs text-[var(--color-text-secondary)]">No metrics have been received yet. Install the agent on your VPS using the button above.</p>
-                                    </div>
-
-                                    <div id="vpsMetricsBody" class="space-y-5">
-                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div>
-                                                <div class="flex items-center justify-between mb-1.5">
-                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">CPU</span>
-                                                    <span id="vpsCpuText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                <div id="vpsMetricsBody" class="space-y-5">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                                            <!-- CPU pie card -->
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl flex flex-col items-center text-center space-y-3">
+                                                <div class="flex items-center space-x-2 self-start">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"></span>
+                                                    <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">CPU</h4>
                                                 </div>
-                                                <div class="h-2.5 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
-                                                    <div id="vpsCpuBar" class="h-full rounded-full bg-[var(--color-primary)] transition-all" style="width:0%"></div>
+                                                <div class="relative h-28 w-28">
+                                                    <canvas id="vpsCpuChart"></canvas>
                                                 </div>
-                                                <p id="vpsLoadText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                                <p id="vpsLoadText" class="text-[10px] text-[var(--color-text-muted)] font-mono"></p>
                                             </div>
-                                            <div>
-                                                <div class="flex items-center justify-between mb-1.5">
-                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">RAM</span>
-                                                    <span id="vpsRamText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                            <!-- RAM pie card -->
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl flex flex-col items-center text-center space-y-3">
+                                                <div class="flex items-center space-x-2 self-start">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-secondary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-secondary)_80%,transparent)]"></span>
+                                                    <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">RAM</h4>
                                                 </div>
-                                                <div class="h-2.5 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
-                                                    <div id="vpsRamBar" class="h-full rounded-full bg-[var(--color-secondary)] transition-all" style="width:0%"></div>
+                                                <div class="relative h-28 w-28">
+                                                    <canvas id="vpsRamChart"></canvas>
                                                 </div>
-                                                <p id="vpsSwapText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                                <p id="vpsSwapText" class="text-[10px] text-[var(--color-text-muted)] font-mono"></p>
                                             </div>
-                                            <div>
-                                                <div class="flex items-center justify-between mb-1.5">
-                                                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Uptime</span>
-                                                    <span id="vpsUptimeText" class="text-xs font-mono font-bold text-[var(--color-text-primary)]">-</span>
+                                            <!-- Storage pie card -->
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl flex flex-col items-center text-center space-y-3">
+                                                <div class="flex items-center space-x-2 self-start">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-warning)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-warning)_80%,transparent)]"></span>
+                                                    <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide" id="vpsStorageLabel">Storage</h4>
                                                 </div>
-                                                <p id="vpsNetText" class="text-[10px] text-[var(--color-text-muted)] font-mono mt-1"></p>
+                                                <div class="relative h-28 w-28">
+                                                    <canvas id="vpsStorageChart"></canvas>
+                                                </div>
+                                                <p id="vpsStorageText" class="text-[10px] text-[var(--color-text-muted)] font-mono"></p>
+                                            </div>
+                                            <!-- Uptime / network stat card -->
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl flex flex-col items-center justify-center text-center space-y-3">
+                                                <div class="flex items-center space-x-2 self-start">
+                                                    <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-text-secondary)] inline-block"></span>
+                                                    <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Uptime</h4>
+                                                </div>
+                                                <div class="h-28 w-full flex items-center justify-center">
+                                                    <span id="vpsUptimeText" class="text-3xl font-black text-[var(--color-text-primary)] font-mono">-</span>
+                                                </div>
+                                                <p id="vpsNetText" class="text-[10px] text-[var(--color-text-muted)] font-mono"></p>
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Storage</h4>
+                                        <div id="vpsDisksExtra" class="hidden">
+                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Other Mounts</h4>
                                             <div id="vpsDisksList" class="space-y-3"></div>
                                         </div>
 
-                                        <div class="relative h-56 w-full pt-2">
-                                            <canvas id="vpsHistoryChart"></canvas>
+                                        <!-- CPU & RAM history card -->
+                                        <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl">
+                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Performance History</h4>
+                                            <div class="relative h-56 w-full pt-2">
+                                                <canvas id="vpsHistoryChart"></canvas>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2 flex items-center gap-2">
-                                                <span>Nginx</span>
-                                                <span id="vpsNginxStatusDot" class="w-1.5 h-1.5 rounded-full bg-[var(--color-text-muted)]"></span>
-                                            </h4>
-                                            <div id="vpsNginxNotDetected" class="text-xs text-[var(--color-text-muted)]">Not detected on this host (or stub_status isn't enabled).</div>
-                                            <div id="vpsNginxStats" class="hidden grid grid-cols-2 gap-4 mb-3">
-                                                <div class="p-3 rounded-xl bg-[var(--color-bg-main)] border border-[var(--color-border)]">
-                                                    <div class="text-[10px] text-[var(--color-text-muted)] uppercase font-semibold">Active Connections</div>
-                                                    <div id="vpsNginxActive" class="text-lg font-bold text-[var(--color-text-primary)] font-mono">-</div>
+                                        <!-- Nginx: error.log / access.log cards -->
+                                        <div id="vpsNginxNotDetected" class="hidden text-xs text-[var(--color-text-muted)]">Nginx not detected on this host (or stub_status isn't enabled).</div>
+                                        <div id="vpsNginxCards" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex items-center space-x-2">
+                                                        <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-error)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-error)_80%,transparent)]"></span>
+                                                        <h5 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Nginx Error Log</h5>
+                                                    </div>
+                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Active: <span id="vpsNginxActive" class="text-[var(--color-text-primary)] font-bold">-</span></span>
                                                 </div>
-                                                <div class="p-3 rounded-xl bg-[var(--color-bg-main)] border border-[var(--color-border)]">
-                                                    <div class="text-[10px] text-[var(--color-text-muted)] uppercase font-semibold">Total Requests</div>
-                                                    <div id="vpsNginxRequests" class="text-lg font-bold text-[var(--color-text-primary)] font-mono">-</div>
-                                                </div>
-                                            </div>
-                                            <div id="vpsNginxErrorsWrap" class="hidden">
-                                                <h5 class="text-[11px] font-semibold text-[var(--color-text-secondary)] mb-1.5">Recent error.log lines</h5>
                                                 <div id="vpsNginxErrors"
-                                                    class="max-h-40 overflow-y-auto text-[11px] font-mono text-[var(--color-error)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
+                                                    class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-error)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
+                                            </div>
+                                            <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex items-center space-x-2">
+                                                        <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"></span>
+                                                        <h5 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Nginx Access Log</h5>
+                                                    </div>
+                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Requests: <span id="vpsNginxRequests" class="text-[var(--color-text-primary)] font-bold">-</span></span>
+                                                </div>
+                                                <div id="vpsNginxAccess"
+                                                    class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
                                             </div>
                                         </div>
-                                    </div>
                                 </div>
                             </div>
-
                             <!-- KEY METRICS GRID CARD -->
                             <div id="httpMetricsCard"
                                 class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl">
@@ -1053,7 +1069,60 @@
 
             // ---- VPS Performance panel (type === 'vps') ----
             let vpsChartInstance = null;
+            let vpsCpuChartInstance = null;
+            let vpsRamChartInstance = null;
+            let vpsStorageChartInstance = null;
             let vpsRequestToken = 0;
+
+            // Small doughnut "gauge" shared by the CPU/RAM/Storage cards — same
+            // cutout/centerText treatment as the Uptime vs Downtime pie chart, just
+            // a single used/remaining slice pair instead of up/down.
+            function initVpsGaugeChart(canvasId, color) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return null;
+                const ctx = canvas.getContext('2d');
+                const trackColor = themeColor('--color-border');
+                const bgSurface = themeColor('--color-bg-surface');
+                const textSecondary = themeColor('--color-text-secondary');
+                const textPrimary = themeColor('--color-text-primary');
+
+                const chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Used', 'Free'],
+                        datasets: [{
+                            data: [0, 100],
+                            backgroundColor: [themeColor(color), `color-mix(in srgb, ${trackColor} 60%, transparent)`],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '78%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: bgSurface, titleColor: textSecondary, bodyColor: textPrimary,
+                                borderColor: trackColor, borderWidth: 1, padding: 8,
+                                callbacks: { label: context => `${context.label}: ${context.raw.toFixed(1)}%` }
+                            }
+                        }
+                    },
+                    plugins: [centerTextPlugin]
+                });
+                chart.config._centerText = { value: '0%', label: '', valueColor: textPrimary, labelColor: textSecondary };
+                return chart;
+            }
+
+            function updateVpsGaugeChart(chart, pct, label) {
+                if (!chart) return;
+                const clamped = Math.max(0, Math.min(100, pct));
+                chart.data.datasets[0].data = [clamped, 100 - clamped];
+                chart.config._centerText.value = `${Math.round(clamped)}%`;
+                chart.config._centerText.label = label;
+                chart.update('none');
+            }
 
             function initVpsChart() {
                 const canvas = document.getElementById('vpsHistoryChart');
@@ -1135,77 +1204,83 @@
             }
 
             function renderVpsPerformance(metrics) {
-                const emptyState = document.getElementById('vpsEmptyState');
-                const body = document.getElementById('vpsMetricsBody');
-                if (metrics.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    body.classList.add('hidden');
-                    document.getElementById('vpsLastSeen').innerText = '';
-                    return;
-                }
-                emptyState.classList.add('hidden');
-                body.classList.remove('hidden');
-
-                const latest = metrics[metrics.length - 1];
+                // No empty-state placeholder — with no metrics yet, `latest` is just an
+                // empty object and every gauge/chart below renders at its zero state
+                // instead of a "waiting for agent" message.
+                const latest = metrics.length > 0 ? metrics[metrics.length - 1] : {};
 
                 document.getElementById('vpsLastSeen').innerText = latest.timestamp
                     ? `Last report: ${new Date(latest.timestamp).toLocaleTimeString()}`
-                    : '';
+                    : 'Waiting for agent…';
 
-                const cpuPct = Math.round(latest.cpu_pct || 0);
-                document.getElementById('vpsCpuText').innerText = `${cpuPct}%`;
-                const cpuBar = document.getElementById('vpsCpuBar');
-                cpuBar.style.width = `${Math.min(100, cpuPct)}%`;
-                cpuBar.className = `h-full rounded-full bg-[var(${pctBarColor(cpuPct)})] transition-all`;
+                if (!vpsCpuChartInstance) vpsCpuChartInstance = initVpsGaugeChart('vpsCpuChart', '--color-primary');
+                if (!vpsRamChartInstance) vpsRamChartInstance = initVpsGaugeChart('vpsRamChart', '--color-secondary');
+                if (!vpsStorageChartInstance) vpsStorageChartInstance = initVpsGaugeChart('vpsStorageChart', '--color-warning');
+
+                const cpuPct = latest.cpu_pct || 0;
+                updateVpsGaugeChart(vpsCpuChartInstance, cpuPct, 'CPU');
                 document.getElementById('vpsLoadText').innerText = `Load: ${(latest.load1 ?? 0).toFixed(2)}, ${(latest.load5 ?? 0).toFixed(2)}, ${(latest.load15 ?? 0).toFixed(2)}`;
 
                 const ramTotal = latest.ram_total_mb || 0;
-                const ramPct = ramTotal > 0 ? Math.round((latest.ram_used_mb / ramTotal) * 100) : 0;
-                document.getElementById('vpsRamText').innerText = `${ramPct}%`;
-                const ramBar = document.getElementById('vpsRamBar');
-                ramBar.style.width = `${Math.min(100, ramPct)}%`;
-                ramBar.className = `h-full rounded-full bg-[var(${pctBarColor(ramPct)})] transition-all`;
+                const ramPct = ramTotal > 0 ? (latest.ram_used_mb / ramTotal) * 100 : 0;
+                updateVpsGaugeChart(vpsRamChartInstance, ramPct, 'RAM');
                 document.getElementById('vpsSwapText').innerText = `${formatMb(latest.ram_used_mb)} / ${formatMb(latest.ram_total_mb)}`
                     + (latest.swap_total_mb ? ` · Swap ${formatMb(latest.swap_used_mb)}/${formatMb(latest.swap_total_mb)}` : '');
 
                 document.getElementById('vpsUptimeText').innerText = formatUptime(latest.uptime_seconds);
                 document.getElementById('vpsNetText').innerText = `↓ ${formatBytesRate(latest.net_rx_bytes)}  ↑ ${formatBytesRate(latest.net_tx_bytes)}`;
 
-                const disksContainer = document.getElementById('vpsDisksList');
-                disksContainer.innerHTML = '';
+                // Primary disk (root, or the first reported mount) drives the Storage
+                // gauge card; any remaining mounts are listed below it.
                 const disks = Array.isArray(latest.disks) ? latest.disks : [];
-                if (disks.length === 0) {
-                    disksContainer.innerHTML = '<p class="text-xs text-[var(--color-text-muted)]">No disk data reported.</p>';
+                const primaryDisk = disks.find(d => d.mount === '/') || disks[0];
+                const storageLabel = document.getElementById('vpsStorageLabel');
+                if (primaryDisk) {
+                    const storagePct = primaryDisk.total_mb > 0 ? (primaryDisk.used_mb / primaryDisk.total_mb) * 100 : 0;
+                    updateVpsGaugeChart(vpsStorageChartInstance, storagePct, 'DISK');
+                    storageLabel.innerText = disks.length > 1 ? `Storage (${primaryDisk.mount})` : 'Storage';
+                    document.getElementById('vpsStorageText').innerText = `${formatMb(primaryDisk.used_mb)} / ${formatMb(primaryDisk.total_mb)}`;
                 } else {
-                    disks.forEach(d => {
-                        const pct = d.total_mb > 0 ? Math.round((d.used_mb / d.total_mb) * 100) : 0;
-                        const row = document.createElement('div');
-                        row.innerHTML = `
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-mono text-[var(--color-text-secondary)]">${escapeHtml(d.mount)}</span>
-                                <span class="text-xs font-mono text-[var(--color-text-primary)]">${formatMb(d.used_mb)} / ${formatMb(d.total_mb)} (${pct}%)</span>
-                            </div>
-                            <div class="h-2 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
-                                <div class="h-full rounded-full bg-[var(${pctBarColor(pct)})]" style="width:${Math.min(100, pct)}%"></div>
-                            </div>`;
-                        disksContainer.appendChild(row);
-                    });
+                    updateVpsGaugeChart(vpsStorageChartInstance, 0, 'DISK');
+                    storageLabel.innerText = 'Storage';
+                    document.getElementById('vpsStorageText').innerText = 'No disk data reported.';
                 }
+
+                const otherDisks = primaryDisk ? disks.filter(d => d !== primaryDisk) : [];
+                const disksExtra = document.getElementById('vpsDisksExtra');
+                const disksContainer = document.getElementById('vpsDisksList');
+                disksExtra.classList.toggle('hidden', otherDisks.length === 0);
+                disksContainer.innerHTML = '';
+                otherDisks.forEach(d => {
+                    const pct = d.total_mb > 0 ? Math.round((d.used_mb / d.total_mb) * 100) : 0;
+                    const row = document.createElement('div');
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-mono text-[var(--color-text-secondary)]">${escapeHtml(d.mount)}</span>
+                            <span class="text-xs font-mono text-[var(--color-text-primary)]">${formatMb(d.used_mb)} / ${formatMb(d.total_mb)} (${pct}%)</span>
+                        </div>
+                        <div class="h-2 rounded-full bg-[var(--color-bg-main)] border border-[var(--color-border)] overflow-hidden">
+                            <div class="h-full rounded-full bg-[var(${pctBarColor(pct)})]" style="width:${Math.min(100, pct)}%"></div>
+                        </div>`;
+                    disksContainer.appendChild(row);
+                });
 
                 const hasNginx = latest.nginx_active_connections != null;
                 document.getElementById('vpsNginxNotDetected').classList.toggle('hidden', hasNginx);
-                document.getElementById('vpsNginxStats').classList.toggle('hidden', !hasNginx);
-                document.getElementById('vpsNginxStatusDot').className = `w-1.5 h-1.5 rounded-full ${hasNginx ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-text-muted)]'}`;
+                document.getElementById('vpsNginxCards').classList.toggle('hidden', !hasNginx);
                 if (hasNginx) {
                     document.getElementById('vpsNginxActive').innerText = latest.nginx_active_connections;
                     document.getElementById('vpsNginxRequests').innerText = latest.nginx_requests_total ?? 'N/A';
-                }
 
-                const errors = Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
-                const errorsWrap = document.getElementById('vpsNginxErrorsWrap');
-                errorsWrap.classList.toggle('hidden', errors.length === 0);
-                if (errors.length > 0) {
-                    document.getElementById('vpsNginxErrors').innerHTML = errors.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('');
+                    const errors = Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
+                    document.getElementById('vpsNginxErrors').innerHTML = errors.length > 0
+                        ? errors.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('')
+                        : '<div class="text-[var(--color-text-muted)]">No recent errors.</div>';
+
+                    const accessLines = Array.isArray(latest.nginx_recent_access) ? latest.nginx_recent_access : [];
+                    document.getElementById('vpsNginxAccess').innerHTML = accessLines.length > 0
+                        ? accessLines.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('')
+                        : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
                 }
 
                 initVpsChart();

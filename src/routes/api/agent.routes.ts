@@ -75,6 +75,10 @@ function parseMetricsPayload(body: any): IFVpsMetricInput {
         ? body.nginx_recent_errors.slice(0, MAX_ERROR_LINES).map((line: any) => String(line ?? '').slice(0, MAX_ERROR_LINE_LENGTH))
         : [];
 
+    const nginxAccess = Array.isArray(body?.nginx_recent_access)
+        ? body.nginx_recent_access.slice(0, MAX_ERROR_LINES).map((line: any) => String(line ?? '').slice(0, MAX_ERROR_LINE_LENGTH))
+        : [];
+
     return {
         cpu_pct: clamp(num(body?.cpu_pct), 0, 100),
         load1: num(body?.load1),
@@ -91,6 +95,7 @@ function parseMetricsPayload(body: any): IFVpsMetricInput {
         nginx_active_connections: clamp(num(body?.nginx_active_connections), 0, Number.MAX_SAFE_INTEGER),
         nginx_requests_total: clamp(num(body?.nginx_requests_total), 0, Number.MAX_SAFE_INTEGER),
         nginx_recent_errors: nginxErrors,
+        nginx_recent_access: nginxAccess,
         agent_version: body?.agent_version ? String(body.agent_version).slice(0, 32) : undefined
     };
 }

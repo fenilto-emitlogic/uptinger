@@ -300,6 +300,7 @@ db.exec(`
         nginx_active_connections INTEGER,
         nginx_requests_total INTEGER,
         nginx_recent_errors TEXT DEFAULT '[]',
+        nginx_recent_access TEXT DEFAULT '[]',
         agent_version TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
@@ -425,6 +426,13 @@ if (orgsWithoutTags.length > 0) {
 const existingCheckColumns = (db.prepare(`PRAGMA table_info(tbl_monitor_checks)`).all() as { name: string }[]).map(c => c.name);
 if (!existingCheckColumns.includes('response_headers')) {
     db.exec(`ALTER TABLE tbl_monitor_checks ADD COLUMN response_headers TEXT DEFAULT NULL`);
+}
+
+// tbl_vps_metrics.nginx_recent_access didn't exist in earlier installs — same
+// upgrade path as response_headers above.
+const existingVpsMetricColumns = (db.prepare(`PRAGMA table_info(tbl_vps_metrics)`).all() as { name: string }[]).map(c => c.name);
+if (!existingVpsMetricColumns.includes('nginx_recent_access')) {
+    db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_recent_access TEXT DEFAULT '[]'`);
 }
 
 // Migrate legacy comma-separated tbl_monitors.tags into the tags table/join

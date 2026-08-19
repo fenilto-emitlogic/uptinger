@@ -16,6 +16,7 @@ export interface IFVpsMetricInput {
     nginx_active_connections?: number;
     nginx_requests_total?: number;
     nginx_recent_errors?: string[];
+    nginx_recent_access?: string[];
     agent_version?: string;
 }
 
@@ -51,6 +52,7 @@ function parseRow(r: any): IFVpsMetric {
         nginx_active_connections: r.nginx_active_connections,
         nginx_requests_total: r.nginx_requests_total,
         nginx_recent_errors: safeParseArray(r.nginx_recent_errors),
+        nginx_recent_access: safeParseArray(r.nginx_recent_access),
         agent_version: r.agent_version,
         timestamp: toUtcIso(r.timestamp)
     };
@@ -73,8 +75,8 @@ class VpsMetricModel {
                 monitor_id, cpu_pct, load1, load5, load15,
                 ram_used_mb, ram_total_mb, swap_used_mb, swap_total_mb, disks,
                 net_rx_bytes, net_tx_bytes, uptime_seconds,
-                nginx_active_connections, nginx_requests_total, nginx_recent_errors, agent_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                nginx_active_connections, nginx_requests_total, nginx_recent_errors, nginx_recent_access, agent_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const res = stmt.run(
@@ -94,6 +96,7 @@ class VpsMetricModel {
             data.nginx_active_connections ?? null,
             data.nginx_requests_total ?? null,
             JSON.stringify(data.nginx_recent_errors ?? []),
+            JSON.stringify(data.nginx_recent_access ?? []),
             data.agent_version ?? null
         );
 
