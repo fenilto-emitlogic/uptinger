@@ -611,6 +611,80 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
             ].join(' \\\n')
         ].join(' && \\\n');
 
+        // YAML has no shell-word-splitting concerns, but a bare value starting with a
+        // special char (or containing ": ") still needs quoting to parse as one scalar.
+        const yamlQuote = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+        // Same install, but as a docker-compose.yml — `docker compose up -d` / `down`
+        // instead of a one-shot `docker run`, so the agent can be stopped/restarted/
+        // rebuilt without hunting down the original run command again.
+        const composeEnvLines = [
+            `      - UPTINGER_TOKEN=${yamlQuote(token)}`,
+            `      - UPTINGER_URL=${yamlQuote(ingestUrl)}`,
+            ...(nginxStatusUrl ? [`      - UPTINGER_NGINX_STATUS_URL=${yamlQuote(nginxStatusUrl)}`] : []),
+            ...(nginxLogDir ? [`      - UPTINGER_NGINX_LOG_DIR=${yamlQuote(nginxLogDir)}`] : [])
+        ].join('\n');
+
+        const dockerCompose = dockerNetwork
+            ? `services:
+  ${AGENT_CONTAINER_NAME}:
+    build: .
+    image: ${AGENT_LOCAL_IMAGE_TAG}
+    container_name: ${AGENT_CONTAINER_NAME}
+    restart: unless-stopped
+    pid: host
+    networks:
+      - ${dockerNetwork}
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+${composeEnvLines}
+
+networks:
+  ${dockerNetwork}:
+    external: true
+`
+            : `services:
+  ${AGENT_CONTAINER_NAME}:
+    build: .
+    image: ${AGENT_LOCAL_IMAGE_TAG}
+    container_name: ${AGENT_CONTAINER_NAME}
+    restart: unless-stopped
+    pid: host
+    network_mode: host
+    volumes:
+      - /:/host:ro,rslave
+    environment:
+${composeEnvLines}
+`;
+
+        const dockerComposeInstall = [
+            `mkdir -p ${buildDir} && cd ${buildDir}`,
+            `curl -fsSL ${appUrl}/api/agent/source/collect.sh -o collect.sh`,
+            `curl -fsSL ${appUrl}/api/agent/source/Dockerfile -o Dockerfile`,
+            `cat > docker-compose.yml << 'EOF'\n${dockerCompose}EOF`,
+            `docker compose up -d --build`
+        ].join(' && \\\n');
+
+        // Minimal stub_status server block for Nginx running in its own container on a
+        // shared Docker network — mirrors what NGINX_STATUS_URL/nginx_network_url above
+        // expect to reach. Deliberately not published in any docker-compose `ports:` so
+        // it's only reachable from other containers on the same network, never the host
+        // or the internet.
+        const nginxStubStatusSnippet = `server {
+    listen 8081;
+    server_name _;
+
+    location = /nginx_status {
+        stub_status;
+        allow all;
+    }
+
+    location / {
+        return 404;
+    }
+}`;
+
         // A VPS is a different machine than the one running this server — if APP_URL was
         // never set (or was left at its localhost dev default), the ingest URL only means
         // "this VPS's own loopback" to the agent, which will never reach us. Surface that
@@ -622,6 +696,9 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
             ingest_url: ingestUrl,
             image: AGENT_LOCAL_IMAGE_TAG,
             docker_run: dockerRun,
+            docker_compose: dockerCompose,
+            docker_compose_install: dockerComposeInstall,
+            nginx_stub_status_snippet: nginxStubStatusSnippet,
             warning: unreachableFromRemote
                 ? 'APP_URL is set to localhost, which a remote VPS cannot reach. Set APP_URL in your .env to this server\'s real public address and restart before installing the agent.'
                 : null
