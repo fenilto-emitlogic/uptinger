@@ -292,7 +292,7 @@
                                         <!-- CPU & RAM history card -->
                                         <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl">
                                             <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Performance History</h4>
-                                            <div class="relative h-56 w-full pt-2">
+                                            <div class="relative h-72 w-full pt-2">
                                                 <canvas id="vpsHistoryChart"></canvas>
                                             </div>
                                         </div>
@@ -306,10 +306,10 @@
                                                         <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-error)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-error)_80%,transparent)]"></span>
                                                         <h5 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Nginx Error Log</h5>
                                                     </div>
-                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Active: <span id="vpsNginxActive" class="text-[var(--color-text-primary)] font-bold">-</span></span>
+                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Active: <span id="vpsNginxActive" class="text-[var(--color-text-primary)] font-bold">-</span> · Size: <span id="vpsNginxErrorSize" class="text-[var(--color-text-primary)] font-bold">-</span></span>
                                                 </div>
                                                 <div id="vpsNginxErrors"
-                                                    class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-error)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
+                                                    class="max-h-48 overflow-y-auto overflow-x-auto text-[11px] font-mono text-[var(--color-error)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
                                             </div>
                                             <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
                                                 <div class="flex items-center justify-between">
@@ -317,10 +317,10 @@
                                                         <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"></span>
                                                         <h5 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Nginx Access Log</h5>
                                                     </div>
-                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Requests: <span id="vpsNginxRequests" class="text-[var(--color-text-primary)] font-bold">-</span></span>
+                                                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono">Requests: <span id="vpsNginxRequests" class="text-[var(--color-text-primary)] font-bold">-</span> · Size: <span id="vpsNginxAccessSize" class="text-[var(--color-text-primary)] font-bold">-</span></span>
                                                 </div>
                                                 <div id="vpsNginxAccess"
-                                                    class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
+                                                    class="max-h-48 overflow-y-auto overflow-x-auto text-[11px] font-mono text-[var(--color-text-secondary)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
                                             </div>
                                         </div>
                                 </div>
@@ -1157,7 +1157,7 @@
                         },
                         scales: {
                             x: { grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 } } },
-                            y: { min: 0, max: 100, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' } }
+                            y: { min: 0, max: 100, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { stepSize: 10, color: textMuted, font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' } }
                         }
                     }
                 });
@@ -1271,15 +1271,17 @@
                 if (hasNginx) {
                     document.getElementById('vpsNginxActive').innerText = latest.nginx_active_connections;
                     document.getElementById('vpsNginxRequests').innerText = latest.nginx_requests_total ?? 'N/A';
+                    document.getElementById('vpsNginxErrorSize').innerText = formatBytesRate(latest.nginx_error_log_size_bytes);
+                    document.getElementById('vpsNginxAccessSize').innerText = formatBytesRate(latest.nginx_access_log_size_bytes);
 
                     const errors = Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
                     document.getElementById('vpsNginxErrors').innerHTML = errors.length > 0
-                        ? errors.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('')
+                        ? errors.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
                         : '<div class="text-[var(--color-text-muted)]">No recent errors.</div>';
 
                     const accessLines = Array.isArray(latest.nginx_recent_access) ? latest.nginx_recent_access : [];
                     document.getElementById('vpsNginxAccess').innerHTML = accessLines.length > 0
-                        ? accessLines.map(line => `<div class="truncate" title="${escapeHtml(line)}">${escapeHtml(line)}</div>`).join('')
+                        ? accessLines.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
                         : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
                 }
 

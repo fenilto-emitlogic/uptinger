@@ -96,6 +96,8 @@ function parseMetricsPayload(body: any): IFVpsMetricInput {
         nginx_requests_total: clamp(num(body?.nginx_requests_total), 0, Number.MAX_SAFE_INTEGER),
         nginx_recent_errors: nginxErrors,
         nginx_recent_access: nginxAccess,
+        nginx_error_log_size_bytes: clamp(num(body?.nginx_error_log_size_bytes), 0, Number.MAX_SAFE_INTEGER),
+        nginx_access_log_size_bytes: clamp(num(body?.nginx_access_log_size_bytes), 0, Number.MAX_SAFE_INTEGER),
         agent_version: body?.agent_version ? String(body.agent_version).slice(0, 32) : undefined
     };
 }

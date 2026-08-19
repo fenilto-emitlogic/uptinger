@@ -17,6 +17,8 @@ export interface IFVpsMetricInput {
     nginx_requests_total?: number;
     nginx_recent_errors?: string[];
     nginx_recent_access?: string[];
+    nginx_error_log_size_bytes?: number;
+    nginx_access_log_size_bytes?: number;
     agent_version?: string;
 }
 
@@ -53,6 +55,8 @@ function parseRow(r: any): IFVpsMetric {
         nginx_requests_total: r.nginx_requests_total,
         nginx_recent_errors: safeParseArray(r.nginx_recent_errors),
         nginx_recent_access: safeParseArray(r.nginx_recent_access),
+        nginx_error_log_size_bytes: r.nginx_error_log_size_bytes,
+        nginx_access_log_size_bytes: r.nginx_access_log_size_bytes,
         agent_version: r.agent_version,
         timestamp: toUtcIso(r.timestamp)
     };
@@ -75,8 +79,9 @@ class VpsMetricModel {
                 monitor_id, cpu_pct, load1, load5, load15,
                 ram_used_mb, ram_total_mb, swap_used_mb, swap_total_mb, disks,
                 net_rx_bytes, net_tx_bytes, uptime_seconds,
-                nginx_active_connections, nginx_requests_total, nginx_recent_errors, nginx_recent_access, agent_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                nginx_active_connections, nginx_requests_total, nginx_recent_errors, nginx_recent_access,
+                nginx_error_log_size_bytes, nginx_access_log_size_bytes, agent_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const res = stmt.run(
@@ -97,6 +102,8 @@ class VpsMetricModel {
             data.nginx_requests_total ?? null,
             JSON.stringify(data.nginx_recent_errors ?? []),
             JSON.stringify(data.nginx_recent_access ?? []),
+            data.nginx_error_log_size_bytes ?? null,
+            data.nginx_access_log_size_bytes ?? null,
             data.agent_version ?? null
         );
 

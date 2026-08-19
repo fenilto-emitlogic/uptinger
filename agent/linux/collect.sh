@@ -130,7 +130,9 @@ read_nginx_json() {
     [ -n "$active" ] || return 1
 
     errors_json='[]'
+    error_log_size=0
     if [ -f "$HOST_ROOT$NGINX_LOG_DIR/error.log" ]; then
+        error_log_size=$(wc -c < "$HOST_ROOT$NGINX_LOG_DIR/error.log" 2>/dev/null | tr -d ' ')
         errors_json=$(tail -n 200 "$HOST_ROOT$NGINX_LOG_DIR/error.log" 2>/dev/null | grep '\[error\]' | tail -n 20 | \
             while IFS= read -r l; do printf '%s\n' "$(json_escape "$l")"; done | \
             awk 'BEGIN{printf "["} {if(NR>1) printf ","; printf "\"%s\"", $0} END{printf "]"}')
@@ -141,15 +143,17 @@ read_nginx_json() {
     # and nothing is uploaded/copied wholesale to the server, just this bounded tail
     # each push interval (same shape as the error-log sampling above).
     access_json='[]'
+    access_log_size=0
     if [ -f "$HOST_ROOT$NGINX_LOG_DIR/access.log" ]; then
+        access_log_size=$(wc -c < "$HOST_ROOT$NGINX_LOG_DIR/access.log" 2>/dev/null | tr -d ' ')
         access_json=$(tail -n 20 "$HOST_ROOT$NGINX_LOG_DIR/access.log" 2>/dev/null | \
             while IFS= read -r l; do printf '%s\n' "$(json_escape "$l")"; done | \
             awk 'BEGIN{printf "["} {if(NR>1) printf ","; printf "\"%s\"", $0} END{printf "]"}')
         [ -n "$access_json" ] || access_json='[]'
     fi
 
-    printf '{"nginx_active_connections":%d,"nginx_requests_total":%d,"nginx_recent_errors":%s,"nginx_recent_access":%s}' \
-        "${active:-0}" "${requests:-0}" "$errors_json" "$access_json"
+    printf '{"nginx_active_connections":%d,"nginx_requests_total":%d,"nginx_recent_errors":%s,"nginx_recent_access":%s,"nginx_error_log_size_bytes":%d,"nginx_access_log_size_bytes":%d}' \
+        "${active:-0}" "${requests:-0}" "$errors_json" "$access_json" "${error_log_size:-0}" "${access_log_size:-0}"
 }
 
 build_and_send() {

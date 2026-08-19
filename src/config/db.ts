@@ -301,6 +301,8 @@ db.exec(`
         nginx_requests_total INTEGER,
         nginx_recent_errors TEXT DEFAULT '[]',
         nginx_recent_access TEXT DEFAULT '[]',
+        nginx_error_log_size_bytes INTEGER,
+        nginx_access_log_size_bytes INTEGER,
         agent_version TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
@@ -433,6 +435,12 @@ if (!existingCheckColumns.includes('response_headers')) {
 const existingVpsMetricColumns = (db.prepare(`PRAGMA table_info(tbl_vps_metrics)`).all() as { name: string }[]).map(c => c.name);
 if (!existingVpsMetricColumns.includes('nginx_recent_access')) {
     db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_recent_access TEXT DEFAULT '[]'`);
+}
+if (!existingVpsMetricColumns.includes('nginx_error_log_size_bytes')) {
+    db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_error_log_size_bytes INTEGER`);
+}
+if (!existingVpsMetricColumns.includes('nginx_access_log_size_bytes')) {
+    db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_access_log_size_bytes INTEGER`);
 }
 
 // Migrate legacy comma-separated tbl_monitors.tags into the tags table/join
