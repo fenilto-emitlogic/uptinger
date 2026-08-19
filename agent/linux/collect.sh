@@ -18,6 +18,12 @@ HOST_ROOT="${UPTINGER_HOST_ROOT:-/host}"
 # from this container (a published host port, or a container:port on a shared
 # --network this agent was also attached to).
 NGINX_STATUS_URL="${UPTINGER_NGINX_STATUS_URL:-http://127.0.0.1/nginx_status}"
+# Override when Nginx's logs aren't at the host's own /var/log/nginx — e.g. Nginx runs
+# in its own container with `./logs:/var/log/nginx` bind-mounted from some other
+# directory on the host. Point this at that real host directory (it's read through
+# $HOST_ROOT same as everything else here, so pass the host-side path, not a
+# container-side one).
+NGINX_LOG_DIR="${UPTINGER_NGINX_LOG_DIR:-/var/log/nginx}"
 AGENT_VERSION="1.0.0"
 
 # Never crash the loop on a transient host-file read/parse failure — a monitoring
@@ -124,8 +130,8 @@ read_nginx_json() {
     [ -n "$active" ] || return 1
 
     errors_json='[]'
-    if [ -f "$HOST_ROOT/var/log/nginx/error.log" ]; then
-        errors_json=$(tail -n 200 "$HOST_ROOT/var/log/nginx/error.log" 2>/dev/null | grep '\[error\]' | tail -n 20 | \
+    if [ -f "$HOST_ROOT$NGINX_LOG_DIR/error.log" ]; then
+        errors_json=$(tail -n 200 "$HOST_ROOT$NGINX_LOG_DIR/error.log" 2>/dev/null | grep '\[error\]' | tail -n 20 | \
             while IFS= read -r l; do printf '%s\n' "$(json_escape "$l")"; done | \
             awk 'BEGIN{printf "["} {if(NR>1) printf ","; printf "\"%s\"", $0} END{printf "]"}')
         [ -n "$errors_json" ] || errors_json='[]'

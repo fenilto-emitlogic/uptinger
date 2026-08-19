@@ -584,6 +584,10 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
         const shQuote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
         const nginxStatusUrl = typeof req.query.nginx_status_url === 'string' ? req.query.nginx_status_url.trim() : '';
         const dockerNetwork = typeof req.query.docker_network === 'string' ? req.query.docker_network.trim() : '';
+        // Optional: when Nginx's logs aren't at the host's own /var/log/nginx (e.g. Nginx
+        // runs in its own container with its log volume bind-mounted from elsewhere on
+        // the host), lets the caller supply that real host-side directory.
+        const nginxLogDir = typeof req.query.nginx_log_dir === 'string' ? req.query.nginx_log_dir.trim() : '';
 
         // Downloads this instance's own copy of the agent source and builds it locally —
         // "docker run <image>" would mean either publishing/maintaining a registry image
@@ -602,6 +606,7 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
                 `  -e UPTINGER_TOKEN=${token}`,
                 `  -e UPTINGER_URL=${ingestUrl}`,
                 ...(nginxStatusUrl ? [`  -e UPTINGER_NGINX_STATUS_URL=${shQuote(nginxStatusUrl)}`] : []),
+                ...(nginxLogDir ? [`  -e UPTINGER_NGINX_LOG_DIR=${shQuote(nginxLogDir)}`] : []),
                 `  ${AGENT_LOCAL_IMAGE_TAG}`
             ].join(' \\\n')
         ].join(' && \\\n');
