@@ -23,6 +23,10 @@ app.locals.hasPermission = hasPermission;
 app.locals.jsonScript = jsonScript;
 
 // Core Middlewares
+app.use((_req, res, next) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
