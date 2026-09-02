@@ -1130,6 +1130,7 @@
                 const ctx = canvas.getContext('2d');
                 const primary = themeColor('--color-primary');
                 const secondary = themeColor('--color-secondary');
+                const warning = themeColor('--color-warning');
                 const border = themeColor('--color-border');
                 const bgSurface = themeColor('--color-bg-surface');
                 const textSecondary = themeColor('--color-text-secondary');
@@ -1141,7 +1142,8 @@
                         labels: [],
                         datasets: [
                             { label: 'CPU %', data: [], borderColor: primary, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                            { label: 'RAM %', data: [], borderColor: secondary, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+                            { label: 'RAM %', data: [], borderColor: secondary, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+                            { label: 'Disk %', data: [], borderColor: warning, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
                         ]
                     },
                     options: {
@@ -1290,6 +1292,11 @@
                     vpsChartInstance.data.labels = metrics.map(mt => formatLocalTime(mt.timestamp));
                     vpsChartInstance.data.datasets[0].data = metrics.map(mt => Math.round(mt.cpu_pct || 0));
                     vpsChartInstance.data.datasets[1].data = metrics.map(mt => mt.ram_total_mb > 0 ? Math.round((mt.ram_used_mb / mt.ram_total_mb) * 100) : 0);
+                    vpsChartInstance.data.datasets[2].data = metrics.map(mt => {
+                        const mtDisks = Array.isArray(mt.disks) ? mt.disks : [];
+                        const mtPrimaryDisk = mtDisks.find(d => d.mount === '/') || mtDisks[0];
+                        return mtPrimaryDisk && mtPrimaryDisk.total_mb > 0 ? Math.round((mtPrimaryDisk.used_mb / mtPrimaryDisk.total_mb) * 100) : 0;
+                    });
                     vpsChartInstance.update('none');
                 }
             }
