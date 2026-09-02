@@ -83,7 +83,7 @@
 
                                 <!-- Filter Controls -->
                                 <div class="space-y-2">
-                                    <div class="grid grid-cols-2 gap-2">
+                                    <div class="grid grid-cols-3 gap-2">
                                         <div class="relative">
                                             <select id="statusFilter" onchange="filterMonitors()"
                                                 class="w-full appearance-none bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 pr-7 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
@@ -91,6 +91,17 @@
                                                 <option value="ONLINE">Up</option>
                                                 <option value="OFFLINE">Down</option>
                                                 <option value="PAUSED">Paused</option>
+                                            </select>
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-text-secondary)] absolute right-2.5 top-2.5 pointer-events-none"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                        <div class="relative">
+                                            <select id="typeFilter" onchange="filterMonitors()"
+                                                class="w-full appearance-none bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3 py-1.5 pr-7 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
+                                                <option value="ALL">Type ▾</option>
                                             </select>
                                             <svg class="w-3.5 h-3.5 text-[var(--color-text-secondary)] absolute right-2.5 top-2.5 pointer-events-none"
                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -707,7 +718,23 @@
                 }
                 startLiveRefresh();
                 loadTagFilterOptions();
+                loadTypeFilterOptions();
             });
+
+            function loadTypeFilterOptions() {
+                fetch('/api/monitor-types')
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.status || !res.data || !res.data.types) return;
+                        const select = document.getElementById('typeFilter');
+                        const current = select.value;
+                        const allTypes = Object.values(res.data.types).flat();
+                        select.innerHTML = '<option value="ALL">Type ▾</option>' +
+                            allTypes.map(t => `<option value="${t.key}">${t.label}</option>`).join('');
+                        if ([...select.options].some(o => o.value === current)) select.value = current;
+                    })
+                    .catch(() => { });
+            }
 
             function loadTagFilterOptions() {
                 fetch('/api/tags')
@@ -1774,6 +1801,7 @@
 
             function filterMonitors() {
                 const status = document.getElementById('statusFilter').value;
+                const type = document.getElementById('typeFilter').value;
                 const tag = document.getElementById('tagFilter').value;
 
                 monitors.forEach(m => {
@@ -1781,9 +1809,10 @@
                     if (!card) return;
 
                     const matchStatus = status === 'ALL' || (status === 'PAUSED' && m.is_paused) || (m.status === status && !m.is_paused);
+                    const matchType = type === 'ALL' || m.type === type;
                     const matchTag = tag === 'ALL' || (m.tags && m.tags.includes(tag));
 
-                    card.style.display = (matchStatus && matchTag) ? 'block' : 'none';
+                    card.style.display = (matchStatus && matchType && matchTag) ? 'block' : 'none';
                 });
             }
 

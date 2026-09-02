@@ -45,7 +45,8 @@ function scopedGroupIds(req: OrgScopedRequest): number[] | undefined {
 // GET /api/monitors - List monitors for the active organization
 router.get('/', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
     try {
-        const monitors = monitorModel.findAll(req.currentOrg?.org_id, scopedGroupIds(req));
+        const type = req.query.type ? String(req.query.type) : undefined;
+        const monitors = monitorModel.findAll(req.currentOrg?.org_id, scopedGroupIds(req), type);
         return sendSuccess(res, 'Monitors fetched successfully', { monitors });
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to fetch monitors', null, 500);

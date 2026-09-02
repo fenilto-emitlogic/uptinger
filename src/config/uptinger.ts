@@ -195,6 +195,9 @@ class UptingerEngine {
             db.prepare(`UPDATE tbl_monitors SET status = 'OFFLINE', updated_at = ? WHERE id = ?`)
                 .run(new Date().toISOString(), monitor.id);
 
+            this.updateAnalytics(monitor.id, 'OFFLINE');
+            this.updateDashboardConfig(monitor, { ok: false, ping_ms: 0, status_code: 0, msg }, 'OFFLINE');
+
             if (monitor.notify_on_down) {
                 this.notify(monitor, 'down', { status_message: msg });
             }
@@ -930,6 +933,12 @@ class UptingerEngine {
         }).catch(err => {
             console.error(`Failed to send notification email for monitor ${monitor.id}:`, err.message);
         });
+    }
+
+    /** Public entry point for status flips that happen outside the active-check loop (e.g. push heartbeats) — keeps analytics/dashboard config in sync the same way recordResult() does. */
+    refreshMonitorStats(monitor: IFMonitorParsed, result: ICheckResult, status: string): void {
+        this.updateAnalytics(monitor.id, status);
+        this.updateDashboardConfig(monitor, result, status);
     }
 
     private updateAnalytics(monitorId: number, status: string): void {

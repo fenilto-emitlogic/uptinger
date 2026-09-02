@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../config/db.js';
+import { uptinger } from '../../config/uptinger.js';
 import { monitorModel } from '../../models/monitor.model.js';
 import { sendError, sendSuccess } from '../../utils/res.utils.js';
 
@@ -30,6 +31,8 @@ function handlePush(req: any, res: any) {
         .run(id, status, pingMs, msg);
     db.prepare(`UPDATE tbl_monitors SET status = ?, updated_at = ? WHERE id = ?`)
         .run(status, new Date().toISOString(), id);
+
+    uptinger.refreshMonitorStats(monitor, { ok: status === 'ONLINE', ping_ms: pingMs, status_code: 200, msg }, status);
 
     if (priorStatus !== status) {
         // Reuse the same notification behavior as active checks would have. Kept intentionally

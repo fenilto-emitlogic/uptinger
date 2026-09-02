@@ -66,19 +66,25 @@ class MonitorModel {
     // Omit it only for system-wide jobs (e.g. the pinger's background check runner).
     // Pass groupIds to further restrict to monitors assigned to those groups only
     // (used for non-admin users who are scoped to specific Groups).
-    findAll(orgId?: number, groupIds?: number[]): IFMonitorParsed[] {
+    findAll(orgId?: number, groupIds?: number[], type?: string): IFMonitorParsed[] {
         let rows: IFMonitor[];
         if (orgId && groupIds) {
             if (groupIds.length === 0) {
                 rows = [];
             } else {
                 const placeholders = groupIds.map(() => '?').join(',');
-                rows = db.prepare(`SELECT * FROM tbl_monitors WHERE org_id = ? AND group_id IN (${placeholders}) ORDER BY id ASC`).all(orgId, ...groupIds) as IFMonitor[];
+                const typeClause = type ? ' AND type = ?' : '';
+                const params = type ? [orgId, ...groupIds, type] : [orgId, ...groupIds];
+                rows = db.prepare(`SELECT * FROM tbl_monitors WHERE org_id = ? AND group_id IN (${placeholders})${typeClause} ORDER BY id ASC`).all(...params) as IFMonitor[];
             }
         } else if (orgId) {
-            rows = db.prepare(`SELECT * FROM tbl_monitors WHERE org_id = ? ORDER BY id ASC`).all(orgId) as IFMonitor[];
+            const typeClause = type ? ' AND type = ?' : '';
+            const params = type ? [orgId, type] : [orgId];
+            rows = db.prepare(`SELECT * FROM tbl_monitors WHERE org_id = ?${typeClause} ORDER BY id ASC`).all(...params) as IFMonitor[];
         } else {
-            rows = db.prepare(`SELECT * FROM tbl_monitors ORDER BY id ASC`).all() as IFMonitor[];
+            const typeClause = type ? ' WHERE type = ?' : '';
+            const params = type ? [type] : [];
+            rows = db.prepare(`SELECT * FROM tbl_monitors${typeClause} ORDER BY id ASC`).all(...params) as IFMonitor[];
         }
         if (rows.length === 0) return [];
 
