@@ -902,9 +902,9 @@
 
                 <p class="text-xs text-[var(--color-text-secondary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] rounded-xl p-3">
                     Building this into a React Native / Expo app rather than testing with curl? A ready-to-copy
-                    reference implementation (device id, batching queue, crash handler, session + screen tracking) is
-                    documented in <code class="font-mono">docs/mobile-monitor-integration.md</code> and mirrored in
-                    <code class="font-mono">uptinger-mobile/README.md</code> — copy those files instead of hand-rolling the queue yourself.
+                    reference implementation (device id, batching queue, crash handler, session + screen tracking)
+                    lives in <code class="font-mono">mobile-monitoring/</code> in this repo — see
+                    <code class="font-mono">docs/mobile-monitor-integration.md</code> for how to wire it in.
                 </p>
 
                 <div class="flex justify-end pt-1">
@@ -2322,8 +2322,9 @@ sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Hom
             }
 
             // "screen_view" is stored as event_type 'custom' with event_name 'screen_view' (see
-            // uptinger-mobile's monitoring/sdk.ts logEvent calls) — the filter above treats it as
-            // its own kind since it dominates the feed, so match on name here, not just type.
+            // mobile-monitoring/sdk.ts's logEvent calls, or the client's own SDK equivalent) —
+            // the filter above treats it as its own kind since it dominates the feed, so match
+            // on name here, not just type.
             function matchesEventTypeFilter(ev, filter) {
                 if (filter === 'ALL') return true;
                 if (filter === 'screen_view') return ev.event_type === 'custom' && ev.event_name === 'screen_view';

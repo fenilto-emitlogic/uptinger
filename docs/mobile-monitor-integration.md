@@ -6,9 +6,9 @@ powers crash analytics, event tracking, and usage/adoption stats (DAU/WAU/MAU, c
 rate, version/OS adoption) — no live/real-time tracking, just periodic batched pushes.
 
 This guide is for integrating *any* mobile app. Sections 1-4 cover the raw API — usable from
-any platform. If you want a working SDK instead of hand-rolling requests, `uptinger-mobile/monitoring/`
-ships a full reference implementation (device id, batching queue, crash handler, session and
-screen-view tracking) that you can copy into another React Native/Expo app — see §5-6.
+any platform. If you want a working SDK instead of hand-rolling requests, [`mobile-monitoring/`](../mobile-monitoring)
+in this repo ships a full reference implementation (device id, batching queue, crash handler,
+session and screen-view tracking) that you can copy into another React Native/Expo app — see §5-6.
 
 ## 1. Create a monitor
 
@@ -133,12 +133,13 @@ window by default.
 
 ## 5. Reference implementation
 
-`uptinger-mobile/monitoring/` in this repo is a full example: device id generation, an
-in-memory batched event queue flushed on app open/close (no wall-clock timer — see §6), a global crash handler, an error
-boundary, automatic screen-view tracking, and session tracking, wired into the app's root
-layout. `uptinger-mobile` dogfoods it against its own real usage (not just synthetic test
-events), so it's a working reference, not just a snippet. Use it as a template if you'd
-rather not hand-roll the batching/queueing logic yourself.
+[`mobile-monitoring/`](../mobile-monitoring) in this repo is a full example: device id
+generation, a disk-persisted batched event queue flushed on app open/close (no wall-clock
+timer — see §6), a global crash handler, an error boundary, automatic screen-view tracking
+(with a `screenCodes.ts` template for stable per-screen codes), and session tracking. It's
+the same code Uptinger's own mobile app runs in production against its own real usage, not
+a synthetic snippet — copy it as a starting point rather than hand-rolling the
+batching/queueing logic yourself.
 
 It is **not** published as an installable package yet — reuse it by copying files, per §6.
 
@@ -146,36 +147,49 @@ It is **not** published as an installable package yet — reuse it by copying fi
 
 ### Expo / React Native apps
 
-1. Copy `uptinger-mobile/monitoring/` into the other app's project as-is.
+1. Copy the [`mobile-monitoring/`](../mobile-monitoring) folder into the other app's project
+   (rename it however you like, e.g. `monitoring/`).
 2. Install its peer dependencies: `expo-crypto`, `expo-device`, `expo-application`,
    `expo-secure-store`, `expo-file-system` (persists the event queue to disk so nothing is
    lost between app open/close flushes), `expo-localization` (region/locale/timezone in the
    device context sent with every event). (A bare React Native app without Expo would swap
    these for RN-native equivalents — a device-info library, a Keychain-backed secure store, a
-   UUID library, `react-native-fs`, `react-native-localize` — everything else in `monitoring/`
-   has no Expo dependency.)
+   UUID library, `react-native-fs`, `react-native-localize` — everything else has no Expo
+   dependency.)
 3. Initialize once, as early as possible (e.g. the app's root layout/entry component):
    ```ts
-   import { initMonitoring } from './monitoring/sdk';
-   import { installGlobalCrashHandler } from './monitoring/globalCrashHandler';
+   import { initMonitoring } from './mobile-monitoring/sdk';
+   import { installGlobalCrashHandler } from './mobile-monitoring/globalCrashHandler';
 
    initMonitoring({ serverUrl: 'https://your-uptinger-host', monitorId: 5, mobileToken: 'the-token' });
    installGlobalCrashHandler();
    ```
-4. Wrap the app tree in `<ErrorBoundary>` (from `monitoring/ErrorBoundary.tsx`) to catch
-   render-tree errors as non-fatal reports.
-5. Call `startSession()` on cold start / foreground and `endSession()` on background —
-   see `useMonitoringSession` in `uptinger-mobile/components/app.tsx` for the `AppState`
-   listener pattern this is built on. These two calls are also what triggers delivery:
-   there is no wall-clock flush timer — `startSession()` flushes any leftover queue from
-   before (in case the app was previously force-quit rather than backgrounded) and then
-   flushes again after `session_start`; `endSession()` flushes on the way out. A fatal
-   crash flushes immediately regardless of session state. This makes delivery predictable
-   (data lands when the app opens or closes) rather than "sometime in the next N seconds".
+4. Wrap the app tree in `<ErrorBoundary>` (from `mobile-monitoring/ErrorBoundary.tsx`) to
+   catch render-tree errors as non-fatal reports.
+5. Call `startSession()` on cold start / foreground and `endSession()` on background, tied to
+   React Native's `AppState`:
+   ```ts
+   import { AppState } from 'react-native';
+   import { startSession, endSession } from './mobile-monitoring/sdk';
+
+   startSession(); // call once at app startup, after initMonitoring()
+
+   AppState.addEventListener('change', (nextState) => {
+     if (nextState === 'active') startSession();
+     else if (nextState === 'background' || nextState === 'inactive') endSession();
+   });
+   ```
+   These two calls are also what triggers delivery: there is no wall-clock flush timer —
+   `startSession()` flushes any leftover queue from before (in case the app was previously
+   force-quit rather than backgrounded) and then flushes again after `session_start`;
+   `endSession()` flushes on the way out. A fatal crash flushes immediately regardless of
+   session state. This makes delivery predictable (data lands when the app opens or closes)
+   rather than "sometime in the next N seconds".
 6. For automatic screen-view events (rather than only manually-triggered ones), add a hook
    that watches route changes and calls `logEvent('screen_view', { screen })` on each one —
-   see `monitoring/useScreenTracking.ts`, which does this with `usePathname()` from
-   expo-router. A non-Expo-Router app would wire the equivalent from its own navigation
+   see `mobile-monitoring/useScreenTracking.ts`, which does this with `usePathname()` from
+   expo-router (pair it with `screenCodes.ts` for stable per-screen codes independent of the
+   raw path). A non-Expo-Router app would wire the equivalent from its own navigation
    library's "current route" listener (e.g. React Navigation's `onStateChange`).
 7. Anywhere else in the app: `logEvent(name, props?)` for custom events, `logError(error, fatal?)`
    for manually-caught errors.

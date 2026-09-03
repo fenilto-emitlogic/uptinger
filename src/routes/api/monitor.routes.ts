@@ -861,6 +861,14 @@ router.get('/:id/mobile-analytics', requirePermission(PERMISSIONS.MONITOR_VIEW),
         const weekIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const monthIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+        // event_feed defaults to 100 rows for the web dashboard's merged event-log table
+        // (dashboard.ejs fetches this endpoint once and filters/slices it client-side).
+        // The mobile app pages through GET /mobile-events instead and doesn't read this
+        // field at all — pass event_limit=0 to skip the query and the (otherwise wasted)
+        // ~100-row payload entirely.
+        const requestedEventLimit = parseInt(String(req.query.event_limit ?? '100'), 10);
+        const eventLimit = Number.isFinite(requestedEventLimit) ? Math.min(Math.max(requestedEventLimit, 0), 100) : 100;
+
         return sendSuccess(res, 'Mobile analytics', {
             crash_issues: mobileEventModel.listCrashIssues(id),
             crash_free_rate: mobileEventModel.getCrashFreeRate(id, sinceIso),
@@ -873,7 +881,7 @@ router.get('/:id/mobile-analytics', requirePermission(PERMISSIONS.MONITOR_VIEW),
             os_breakdown: mobileEventModel.getOsBreakdown(id, sinceIso),
             custom_events: mobileEventModel.listCustomEvents(id, sinceIso),
             region_breakdown: mobileEventModel.getRegionBreakdown(id, sinceIso),
-            event_feed: mobileEventModel.getEventFeed(id, 100)
+            event_feed: eventLimit > 0 ? mobileEventModel.getEventFeed(id, eventLimit) : []
         });
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to fetch mobile analytics', null, 500);
