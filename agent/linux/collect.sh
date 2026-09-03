@@ -170,12 +170,24 @@ read_nginx_json() {
 # `docker ps -s` shows). Requires `jq` (in the agent image) since these responses nest
 # deeply enough that awk/sed parsing would be unreadable and fragile.
 read_docker_json() {
-    [ -S "$DOCKER_SOCK" ] || return 1
-    command -v jq >/dev/null 2>&1 || return 1
+    if [ ! -S "$DOCKER_SOCK" ]; then
+        echo "$(date -u +%FT%TZ) uptinger-agent: docker socket not found at ${DOCKER_SOCK} (mount it with -v /var/run/docker.sock:/var/run/docker.sock:ro, or set UPTINGER_DOCKER_SOCK) — skipping container collection" >&2
+        return 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "$(date -u +%FT%TZ) uptinger-agent: jq not found in agent image — skipping container collection" >&2
+        return 1
+    fi
 
     containers=$(curl -fsS --max-time 5 --unix-socket "$DOCKER_SOCK" "http://localhost/containers/json?all=1&size=1" 2>/dev/null)
-    [ -n "$containers" ] || return 1
-    echo "$containers" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
+    if [ -z "$containers" ]; then
+        echo "$(date -u +%FT%TZ) uptinger-agent: docker API request failed over ${DOCKER_SOCK} — skipping container collection" >&2
+        return 1
+    fi
+    if ! echo "$containers" | jq -e 'type == "array"' >/dev/null 2>&1; then
+        echo "$(date -u +%FT%TZ) uptinger-agent: unexpected docker API response — skipping container collection" >&2
+        return 1
+    fi
 
     printf '['
     echo "$containers" | jq -c ".[0:${MAX_CONTAINERS}][]" 2>/dev/null | while IFS= read -r c; do

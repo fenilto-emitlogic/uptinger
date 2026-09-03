@@ -337,7 +337,7 @@
                                         <!-- Docker: detected containers on this host (same table treatment as the
                                              Heartbeat Event Logs card below, so this reads as one design system) -->
                                         <div id="vpsDockerCard"
-                                            class="hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-4">
+                                            class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-4">
                                             <div class="flex items-center justify-between flex-wrap gap-y-2">
                                                 <h3 class="text-base font-bold text-[var(--color-text-primary)] flex items-center space-x-2">
                                                     <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1594,10 +1594,18 @@
                     ? accessLines.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
                     : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
 
+                // Always shown (same treatment as the Nginx cards above, which render
+                // '-' placeholders rather than disappearing) — a VPS monitor with no
+                // Docker socket mounted, or one that just hasn't reported yet, still
+                // gets a visible "no containers" card instead of the section vanishing.
                 const containers = Array.isArray(latest.containers) ? latest.containers : [];
-                const dockerCard = document.getElementById('vpsDockerCard');
-                dockerCard.classList.toggle('hidden', containers.length === 0);
-                if (containers.length > 0) {
+                if (containers.length === 0) {
+                    document.getElementById('vpsDockerRunning').innerText = '-';
+                    document.getElementById('vpsDockerTotal').innerText = '-';
+                    document.getElementById('vpsDockerVolumeTotal').innerText = '-';
+                    document.getElementById('vpsDockerContainers').innerHTML =
+                        '<tr><td colspan="6" class="py-4 px-4 text-center text-[var(--color-text-muted)]">No containers detected. Make sure the agent was started with -v /var/run/docker.sock:/var/run/docker.sock:ro.</td></tr>';
+                } else {
                     const runningCount = containers.filter(c => c.state === 'running').length;
                     const volumeTotalMb = containers.reduce((sum, c) => sum + (c.volume_mb || 0), 0);
                     document.getElementById('vpsDockerRunning').innerText = runningCount;
