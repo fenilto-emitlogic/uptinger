@@ -289,9 +289,10 @@
                                 ID</label>
                             <input type="text" id="formContainerName" placeholder="my-app-container"
                                 class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]">
-                            <p class="text-[11px] text-[var(--color-text-secondary)] mt-1">Checked against the local
-                                Docker daemon socket (/var/run/docker.sock). Leave blank to just check the daemon is
-                                reachable.</p>
+                            <p class="text-[11px] text-[var(--color-text-secondary)] mt-1">Leave blank to just check
+                                the daemon is reachable. Leave Hostname / IP above blank too to check the local
+                                Docker daemon socket (/var/run/docker.sock); set a Hostname / IP and Port to check a
+                                remote daemon's API over TCP instead.</p>
                         </div>
                     </div>
 
@@ -537,8 +538,8 @@
             function onTypeChange(type) {
                 const dnsTypes = ['dns'];
                 const dbTypes = ['mssql', 'mongodb', 'mysql', 'postgres', 'redis'];
-                const hostPortTypes = ['tcp', 'ping', 'smtp', 'mqtt', 'rabbitmq', 'websocket', ...dbTypes, ...dnsTypes];
-                const urlTypes = ['http', 'http-keyword', 'docker', 'push', 'manual'];
+                const hostPortTypes = ['tcp', 'ping', 'smtp', 'mqtt', 'rabbitmq', 'websocket', 'docker', ...dbTypes, ...dnsTypes];
+                const urlTypes = ['http', 'http-keyword', 'push', 'manual'];
 
                 document.getElementById('panelUrl').classList.toggle('hidden', !urlTypes.includes(type));
                 document.getElementById('panelHostPort').classList.toggle('hidden', !hostPortTypes.includes(type));
