@@ -632,6 +632,7 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
                 `docker run -d --name ${AGENT_CONTAINER_NAME} --restart unless-stopped`,
                 dockerNetwork ? `  --pid=host --network ${shQuote(dockerNetwork)}` : '  --pid=host --net=host',
                 '  -v /:/host:ro,rslave',
+                '  -v /var/run/docker.sock:/var/run/docker.sock:ro',
                 `  -e UPTINGER_TOKEN=${token}`,
                 `  -e UPTINGER_URL=${ingestUrl}`,
                 ...(nginxStatusUrl ? [`  -e UPTINGER_NGINX_STATUS_URL=${shQuote(nginxStatusUrl)}`] : []),
@@ -673,6 +674,7 @@ router.get('/:id/agent-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (r
       - ${dockerNetwork}
     volumes:
       - /:/host:ro,rslave
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
 ${composeEnvLines}
 
@@ -690,6 +692,7 @@ networks:
     network_mode: host
     volumes:
       - /:/host:ro,rslave
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
 ${composeEnvLines}
 `;

@@ -1,8 +1,10 @@
 # Uptinger VPS Agent
 
-Lightweight Docker agent that reports CPU, RAM, disk, network and (optional) Nginx
-stats from a Linux VPS back to a self-hosted Uptinger instance. No dependency beyond
-Docker itself needs to be installed on the monitored server.
+Lightweight Docker agent that reports CPU, RAM, disk, network, (optional) Nginx stats,
+and (optional) a live Docker container inventory — per-container CPU/memory and
+on-disk (writable layer + image) size — from a Linux VPS back to a self-hosted Uptinger
+instance. No dependency beyond Docker itself needs to be installed on the monitored
+server.
 
 ## How it works
 
@@ -47,6 +49,28 @@ Either way, `stub_status` needs to actually be enabled in the Nginx config first
 Traefik isn't supported yet — the agent only speaks Nginx's `stub_status` format, not
 Traefik's Prometheus metrics endpoint.
 
+## Docker container detection
+
+When the install command's `-v /var/run/docker.sock:/var/run/docker.sock:ro` mount is
+present, each push also includes a `containers` array: one entry per container
+(`id`, `name`, `image`, `state`), and for running ones, live `cpu_pct`/`mem_used_mb`/
+`mem_limit_mb` from that container's own `stats` endpoint, plus `volume_mb` — its
+writable layer + image size (the same number `docker ps -s` reports), always available
+regardless of state. This powers the "Docker Containers" section on the VPS monitor's
+dashboard.
+
+- Read-only: the agent only ever calls `GET` endpoints on the socket
+  (`/containers/json`, `/containers/<id>/stats`) — it cannot start, stop, or otherwise
+  control any container.
+- Capped at `UPTINGER_MAX_CONTAINERS` (default 30) containers per push, since each
+  running container's `stats` call blocks briefly; a host with more than that many
+  still reports the rest of its VPS metrics normally, just without the overflow
+  containers.
+- Silently omitted (empty `containers: []`) if the socket isn't mounted, isn't a
+  socket, or `jq` is unavailable — same best-effort approach as the Nginx integration.
+- Set `UPTINGER_DOCKER_SOCK` if the socket is bind-mounted somewhere other than
+  `/var/run/docker.sock` inside the agent container.
+
 ## Trust model / what the container can see
 
 - `-v /:/host:ro,rslave` — **read-only** bind mount of the host root, needed to read
@@ -55,7 +79,12 @@ Traefik's Prometheus metrics endpoint.
 - `--pid=host` — needed for accurate host-wide CPU/load figures.
 - `--net=host` — used only to reach Nginx's `stub_status` on `127.0.0.1` if present;
   the agent makes no other outbound connections besides the configured `UPTINGER_URL`.
-- No Docker socket is mounted; this agent cannot see or control other containers.
+- `-v /var/run/docker.sock:/var/run/docker.sock:ro` — **read-only** mount of the
+  Docker socket, used only for the two `GET` calls described above. This does give the
+  agent visibility into every other container's name/image/resource usage on the host
+  (a real trust-model change from earlier versions, which mounted no socket at all) —
+  if that's unacceptable for your host, omit this mount from the generated command;
+  the agent keeps working, just without the Docker container section.
 
 ## Building locally (for development)
 

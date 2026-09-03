@@ -39,6 +39,7 @@ router.get('/source/:file', (req, res) => {
 const MAX_DISK_ENTRIES = 64;
 const MAX_ERROR_LINES = 20;
 const MAX_ERROR_LINE_LENGTH = 500;
+const MAX_CONTAINER_ENTRIES = 64;
 
 // Constant-time compare so token validation doesn't leak timing info about how many
 // leading bytes matched — same reasoning as any credential check.
@@ -79,6 +80,19 @@ function parseMetricsPayload(body: any): IFVpsMetricInput {
         ? body.nginx_recent_access.slice(0, MAX_ERROR_LINES).map((line: any) => String(line ?? '').slice(0, MAX_ERROR_LINE_LENGTH))
         : [];
 
+    const containers = Array.isArray(body?.containers)
+        ? body.containers.slice(0, MAX_CONTAINER_ENTRIES).map((c: any) => ({
+            id: String(c?.id ?? '').slice(0, 64),
+            name: String(c?.name ?? '').slice(0, 128),
+            image: String(c?.image ?? '').slice(0, 256),
+            state: String(c?.state ?? 'unknown').slice(0, 32),
+            cpu_pct: clamp(num(c?.cpu_pct), 0, 100) ?? 0,
+            mem_used_mb: clamp(num(c?.mem_used_mb), 0, Number.MAX_SAFE_INTEGER) ?? 0,
+            mem_limit_mb: clamp(num(c?.mem_limit_mb), 0, Number.MAX_SAFE_INTEGER) ?? 0,
+            volume_mb: clamp(num(c?.volume_mb), 0, Number.MAX_SAFE_INTEGER) ?? 0
+        }))
+        : [];
+
     return {
         cpu_pct: clamp(num(body?.cpu_pct), 0, 100),
         load1: num(body?.load1),
@@ -98,6 +112,7 @@ function parseMetricsPayload(body: any): IFVpsMetricInput {
         nginx_recent_access: nginxAccess,
         nginx_error_log_size_bytes: clamp(num(body?.nginx_error_log_size_bytes), 0, Number.MAX_SAFE_INTEGER),
         nginx_access_log_size_bytes: clamp(num(body?.nginx_access_log_size_bytes), 0, Number.MAX_SAFE_INTEGER),
+        containers,
         agent_version: body?.agent_version ? String(body.agent_version).slice(0, 32) : undefined
     };
 }

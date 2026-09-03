@@ -333,6 +333,40 @@
                                                     class="max-h-48 overflow-y-auto overflow-x-auto text-[11px] font-mono text-[var(--color-text-secondary)] bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 space-y-1"></div>
                                             </div>
                                         </div>
+
+                                        <!-- Docker: detected containers on this host (same table treatment as the
+                                             Heartbeat Event Logs card below, so this reads as one design system) -->
+                                        <div id="vpsDockerCard"
+                                            class="hidden bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-4">
+                                            <div class="flex items-center justify-between flex-wrap gap-y-2">
+                                                <h3 class="text-base font-bold text-[var(--color-text-primary)] flex items-center space-x-2">
+                                                    <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                                    </svg>
+                                                    <span>Docker Containers</span>
+                                                </h3>
+                                                <span class="text-xs text-[var(--color-text-muted)] font-mono">Running: <span id="vpsDockerRunning" class="text-[var(--color-text-primary)] font-bold">-</span> · Total: <span id="vpsDockerTotal" class="text-[var(--color-text-primary)] font-bold">-</span> · Volumes: <span id="vpsDockerVolumeTotal" class="text-[var(--color-text-primary)] font-bold">-</span></span>
+                                            </div>
+
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-left text-xs text-[var(--color-text-secondary)]">
+                                                    <thead
+                                                        class="bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] text-[var(--color-text-secondary)] font-semibold border-b border-[var(--color-bg-surface)]">
+                                                        <tr>
+                                                            <th class="py-2.5 px-4 rounded-l-xl">Container</th>
+                                                            <th class="py-2.5 px-4">Image</th>
+                                                            <th class="py-2.5 px-4">State</th>
+                                                            <th class="py-2.5 px-4">CPU</th>
+                                                            <th class="py-2.5 px-4">Memory</th>
+                                                            <th class="py-2.5 px-4 rounded-r-xl">Volume Size</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="vpsDockerContainers"
+                                                        class="divide-y divide-[color-mix(in_srgb,var(--color-bg-surface)_40%,transparent)] font-mono"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                 </div>
                             </div>
                             <!-- MOBILE ANALYTICS CARD (shown only for 'mobile' type monitors) -->
@@ -1559,6 +1593,40 @@
                 document.getElementById('vpsNginxAccess').innerHTML = accessLines.length > 0
                     ? accessLines.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
                     : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
+
+                const containers = Array.isArray(latest.containers) ? latest.containers : [];
+                const dockerCard = document.getElementById('vpsDockerCard');
+                dockerCard.classList.toggle('hidden', containers.length === 0);
+                if (containers.length > 0) {
+                    const runningCount = containers.filter(c => c.state === 'running').length;
+                    const volumeTotalMb = containers.reduce((sum, c) => sum + (c.volume_mb || 0), 0);
+                    document.getElementById('vpsDockerRunning').innerText = runningCount;
+                    document.getElementById('vpsDockerTotal').innerText = containers.length;
+                    document.getElementById('vpsDockerVolumeTotal').innerText = formatMb(volumeTotalMb);
+
+                    // Same pill-badge treatment as the Heartbeat Event Logs status column
+                    // (mobileEventBadgeClass et al.) — green/amber/gray by state.
+                    const stateBadgeClass = state => state === 'running'
+                        ? 'bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)] text-[var(--color-success)]'
+                        : state === 'exited'
+                            ? 'bg-[color-mix(in_srgb,var(--color-text-muted)_20%,transparent)] text-[var(--color-text-muted)]'
+                            : 'bg-[color-mix(in_srgb,var(--color-warning)_20%,transparent)] text-[var(--color-warning)]';
+
+                    const tbody = document.getElementById('vpsDockerContainers');
+                    tbody.innerHTML = containers
+                        .slice()
+                        .sort((a, b) => (b.cpu_pct || 0) - (a.cpu_pct || 0))
+                        .map(c => `
+                            <tr class="hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_30%,transparent)] transition-colors">
+                                <td class="py-2.5 px-4 text-[var(--color-text-primary)] font-semibold">${escapeHtml(c.name || c.id || '-')}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)] max-w-[220px] truncate">${escapeHtml(c.image || '-')}</td>
+                                <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block ${stateBadgeClass(c.state)}">${escapeHtml(c.state || 'unknown')}</span></td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${c.state === 'running' ? (c.cpu_pct ?? 0).toFixed(1) + '%' : '-'}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${c.state === 'running' ? formatMb(c.mem_used_mb) + (c.mem_limit_mb ? ' / ' + formatMb(c.mem_limit_mb) : '') : '-'}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatMb(c.volume_mb)}</td>
+                            </tr>`)
+                        .join('');
+                }
 
                 initVpsChart();
                 if (vpsChartInstance) {

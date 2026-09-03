@@ -4,7 +4,7 @@
 # user's own Uptinger instance and runs `docker build` directly on the target VPS.
 FROM alpine:3.20
 
-RUN apk add --no-cache curl bash coreutils \
+RUN apk add --no-cache curl bash coreutils jq \
     && addgroup -S uptinger && adduser -S -G uptinger uptinger
 
 COPY collect.sh /usr/local/bin/collect.sh

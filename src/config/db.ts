@@ -303,6 +303,7 @@ db.exec(`
         nginx_recent_access TEXT DEFAULT '[]',
         nginx_error_log_size_bytes INTEGER,
         nginx_access_log_size_bytes INTEGER,
+        containers TEXT DEFAULT '[]',
         agent_version TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
@@ -490,6 +491,13 @@ if (!existingVpsMetricColumns.includes('nginx_error_log_size_bytes')) {
 }
 if (!existingVpsMetricColumns.includes('nginx_access_log_size_bytes')) {
     db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_access_log_size_bytes INTEGER`);
+}
+
+// tbl_vps_metrics.containers — Docker container inventory (name/image/state/cpu/mem/
+// volume size), pushed only when the agent's docker.sock mount is present. Same
+// upgrade path as the other tbl_vps_metrics columns above.
+if (!existingVpsMetricColumns.includes('containers')) {
+    db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN containers TEXT DEFAULT '[]'`);
 }
 
 // tbl_mobile_events.region/locale/timezone didn't exist in earlier installs — same

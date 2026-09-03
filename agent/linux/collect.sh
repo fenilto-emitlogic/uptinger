@@ -24,7 +24,15 @@ NGINX_STATUS_URL="${UPTINGER_NGINX_STATUS_URL:-http://127.0.0.1/nginx_status}"
 # $HOST_ROOT same as everything else here, so pass the host-side path, not a
 # container-side one).
 NGINX_LOG_DIR="${UPTINGER_NGINX_LOG_DIR:-/var/log/nginx}"
-AGENT_VERSION="1.0.0"
+# Where the host's Docker socket is bind-mounted into this container (read-only), if at
+# all — see the -v /var/run/docker.sock:/var/run/docker.sock:ro line in the generated
+# install command. Container listing/stats are silently omitted from the payload when
+# this path isn't a socket, same "best-effort" approach as the Nginx stats above.
+DOCKER_SOCK="${UPTINGER_DOCKER_SOCK:-/var/run/docker.sock}"
+# Bounds how many containers get a per-container `stats` call each push interval (each
+# call blocks ~1s), so a host with hundreds of containers can't stall the whole loop.
+MAX_CONTAINERS="${UPTINGER_MAX_CONTAINERS:-30}"
+AGENT_VERSION="1.1.0"
 
 # Never crash the loop on a transient host-file read/parse failure — a monitoring
 # agent going down is worse than one skipped/partial data point.
@@ -156,6 +164,56 @@ read_nginx_json() {
         "${active:-0}" "${requests:-0}" "$errors_json" "$access_json" "${error_log_size:-0}" "${access_log_size:-0}"
 }
 
+# Lists containers (via the Docker API over the bind-mounted socket) with, for each
+# running one, live CPU%/memory from its `stats` endpoint plus its on-disk footprint
+# (writable layer + image size, from `size=1` on the list call — the same numbers
+# `docker ps -s` shows). Requires `jq` (in the agent image) since these responses nest
+# deeply enough that awk/sed parsing would be unreadable and fragile.
+read_docker_json() {
+    [ -S "$DOCKER_SOCK" ] || return 1
+    command -v jq >/dev/null 2>&1 || return 1
+
+    containers=$(curl -fsS --max-time 5 --unix-socket "$DOCKER_SOCK" "http://localhost/containers/json?all=1&size=1" 2>/dev/null)
+    [ -n "$containers" ] || return 1
+    echo "$containers" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
+
+    printf '['
+    echo "$containers" | jq -c ".[0:${MAX_CONTAINERS}][]" 2>/dev/null | while IFS= read -r c; do
+        id=$(echo "$c" | jq -r '.Id[0:12]')
+        name=$(echo "$c" | jq -r '(.Names[0] // "") | sub("^/"; "")')
+        image=$(echo "$c" | jq -r '.Image // ""')
+        state=$(echo "$c" | jq -r '.State // "unknown"')
+        size_rw=$(echo "$c" | jq -r '.SizeRw // 0')
+        size_root=$(echo "$c" | jq -r '.SizeRootFs // 0')
+        volume_mb=$(( (size_rw + size_root) / 1024 / 1024 ))
+
+        cpu_pct=0
+        mem_used_mb=0
+        mem_limit_mb=0
+        if [ "$state" = "running" ]; then
+            stats=$(curl -fsS --max-time 5 --unix-socket "$DOCKER_SOCK" "http://localhost/containers/${id}/stats?stream=false" 2>/dev/null)
+            if [ -n "$stats" ]; then
+                cpu_pct=$(echo "$stats" | jq -r '
+                    ((.cpu_stats.cpu_usage.total_usage // 0) - (.precpu_stats.cpu_usage.total_usage // 0)) as $cd |
+                    ((.cpu_stats.system_cpu_usage // 0) - (.precpu_stats.system_cpu_usage // 0)) as $sd |
+                    (.cpu_stats.online_cpus // (.cpu_stats.cpu_usage.percpu_usage | length) // 1) as $ncpu |
+                    if $sd > 0 and $cd >= 0 then ($cd / $sd * $ncpu * 100) else 0 end
+                ' 2>/dev/null)
+                mem_used_mb=$(echo "$stats" | jq -r '((.memory_stats.usage // 0) - (.memory_stats.stats.cache // 0)) / 1024 / 1024' 2>/dev/null)
+                mem_limit_mb=$(echo "$stats" | jq -r '(.memory_stats.limit // 0) / 1024 / 1024' 2>/dev/null)
+            fi
+        fi
+        cpu_pct=$(printf '%.1f' "${cpu_pct:-0}" 2>/dev/null || echo 0)
+        mem_used_mb=$(printf '%.0f' "${mem_used_mb:-0}" 2>/dev/null || echo 0)
+        mem_limit_mb=$(printf '%.0f' "${mem_limit_mb:-0}" 2>/dev/null || echo 0)
+
+        printf '{"id":"%s","name":"%s","image":"%s","state":"%s","cpu_pct":%s,"mem_used_mb":%s,"mem_limit_mb":%s,"volume_mb":%s}\n' \
+            "$(json_escape "$id")" "$(json_escape "$name")" "$(json_escape "$image")" "$(json_escape "$state")" \
+            "${cpu_pct:-0}" "${mem_used_mb:-0}" "${mem_limit_mb:-0}" "${volume_mb:-0}"
+    done | awk 'BEGIN{first=1} {if(!first) printf ","; printf "%s", $0; first=0}'
+    printf ']'
+}
+
 build_and_send() {
     cpu=$(read_cpu_pct)
     load=$(read_load)
@@ -176,10 +234,12 @@ build_and_send() {
     uptime=$(read_uptime)
     disks_json=$(read_disks_json)
     nginx_json=$(read_nginx_json)
+    containers_json=$(read_docker_json)
+    [ -n "$containers_json" ] || containers_json='[]'
 
-    payload=$(printf '{"cpu_pct":%s,"load1":%s,"load5":%s,"load15":%s,"ram_used_mb":%s,"ram_total_mb":%s,"swap_used_mb":%s,"swap_total_mb":%s,"disks":%s,"net_rx_bytes":%s,"net_tx_bytes":%s,"uptime_seconds":%s,"agent_version":"%s"' \
+    payload=$(printf '{"cpu_pct":%s,"load1":%s,"load5":%s,"load15":%s,"ram_used_mb":%s,"ram_total_mb":%s,"swap_used_mb":%s,"swap_total_mb":%s,"disks":%s,"net_rx_bytes":%s,"net_tx_bytes":%s,"uptime_seconds":%s,"containers":%s,"agent_version":"%s"' \
         "${cpu:-0}" "${load1:-0}" "${load5:-0}" "${load15:-0}" "${ram_used:-0}" "${ram_total:-0}" "${swap_used:-0}" "${swap_total:-0}" \
-        "${disks_json:-[]}" "${net_rx:-0}" "${net_tx:-0}" "${uptime:-0}" "$AGENT_VERSION")
+        "${disks_json:-[]}" "${net_rx:-0}" "${net_tx:-0}" "${uptime:-0}" "${containers_json:-[]}" "$AGENT_VERSION")
 
     if [ -n "$nginx_json" ]; then
         # Splice the nginx fields into the same object instead of nesting, so the
