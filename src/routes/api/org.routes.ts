@@ -7,9 +7,11 @@ import { sendError, sendSuccess } from '../../utils/res.utils.js';
 import { authenticateTokenMiddelware } from '../../middlewares/auth.middleware.js';
 import { attachOrgContext, requirePermission, OrgScopedRequest } from '../../middlewares/org.middleware.js';
 import { PERMISSIONS } from '../../config/permissions.js';
-import { passwordResetModel } from '../../models/password-reset.model.js';
+import { passwordModel } from '../../models/password.model.js';
+import { smtpModel } from '../../models/smtp.model.js';
 import { sendTemplatedMail } from '../../utils/notify.utils.js';
 import { getAppUrl } from '../../config/email-templates.js';
+import { generateTempPassword, hashPassword } from '../../utils/password.utils.js';
 
 const router = Router();
 
@@ -69,26 +71,30 @@ router.post('/:id/invite', requirePermission(PERMISSIONS.ORG_INVITE), async (req
 
         userOrgModel.add(orgId, user.id, (req.user as any).userId, role.id);
 
-        // New accounts have no password yet — send a set-password link. Existing users
-        // just get pointed at sign-in since they can already log in.
-        const inviterEmail = (req.user as any).email;
-        const actionUrl = isNewUser
-            ? (() => {
-                const { token } = passwordResetModel.create(user!.id, 'invite');
-                return `${getAppUrl()}/auth/reset-password?token=${token}`;
-            })()
-            : `${getAppUrl()}/auth/login`;
+        // New accounts have no password yet — generate one now, show it to the inviting
+        // admin, and email it to the invitee if SMTP is configured. Existing users already
+        // have a password and just keep using it.
+        let tempPassword: string | undefined;
+        if (isNewUser) {
+            tempPassword = generateTempPassword();
+            passwordModel.setPassword(user.id, await hashPassword(tempPassword));
 
-        sendTemplatedMail(orgId, 'invite', user.email, {
-            user_name: user.first_name,
-            org_name: req.currentOrg?.org_name || '',
-            inviter_email: inviterEmail,
-            action_url: actionUrl,
-            expires_in: passwordResetModel.expiresInLabel('invite'),
-        }).catch(err => console.error(`Failed to send invite email to ${user!.email}:`, err.message));
+            const inviterEmail = (req.user as any).email;
+            const smtp = smtpModel.findByOrg(orgId);
+            if (smtp && smtp.is_active) {
+                sendTemplatedMail(orgId, 'invite', user.email, {
+                    user_name: user.first_name,
+                    org_name: req.currentOrg?.org_name || '',
+                    inviter_email: inviterEmail,
+                    login_url: `${getAppUrl()}/auth/login`,
+                    temp_password: tempPassword,
+                }).catch(err => console.error(`Failed to send invite email to ${user!.email}:`, err.message));
+            }
+        }
 
         return sendSuccess(res, 'User invited to organization', {
             user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name },
+            tempPassword,
         }, 201);
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to invite user', err, 500);
@@ -105,6 +111,41 @@ router.put('/:id/members/:userId/role', requirePermission(PERMISSIONS.ORG_INVITE
 
     userOrgModel.updateRole(orgId, memberUserId, role.id, (req.user as any).userId);
     return sendSuccess(res, 'Member role updated');
+});
+
+// Admin-initiated password reset — generates a new temp password for the member,
+// shows it to the acting admin, and emails it to the member if SMTP is configured.
+router.post('/:id/members/:userId/reset-password', requirePermission(PERMISSIONS.ORG_INVITE), async (req: OrgScopedRequest, res) => {
+    try {
+        const orgId = Number(req.params.id);
+        const memberUserId = Number(req.params.userId);
+        if (orgId !== req.currentOrg?.org_id) return sendError(res, 'Org mismatch.', null, 403);
+        if (!userOrgModel.exists(orgId, memberUserId)) {
+            return sendError(res, 'User is not a member of this organization.', null, 404);
+        }
+
+        const member = userModel.findById(memberUserId);
+        if (!member) return sendError(res, 'User not found.', null, 404);
+
+        const tempPassword = generateTempPassword();
+        passwordModel.setPassword(member.id, await hashPassword(tempPassword));
+
+        const actorEmail = (req.user as any).email;
+        const smtp = smtpModel.findByOrg(orgId);
+        if (smtp && smtp.is_active) {
+            sendTemplatedMail(orgId, 'admin_password_reset', member.email, {
+                user_name: member.first_name,
+                org_name: req.currentOrg?.org_name || '',
+                actor_email: actorEmail,
+                login_url: `${getAppUrl()}/auth/login`,
+                temp_password: tempPassword,
+            }).catch(err => console.error(`Failed to send password reset email to ${member.email}:`, err.message));
+        }
+
+        return sendSuccess(res, 'Password reset', { tempPassword });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to reset password', err, 500);
+    }
 });
 
 router.delete('/:id/members/:userId', requirePermission(PERMISSIONS.ORG_INVITE), (req: OrgScopedRequest, res) => {

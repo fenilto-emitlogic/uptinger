@@ -78,6 +78,50 @@
         });
     };
 
+    // Shows a one-time credential (e.g. a generated password) with a copy button.
+    window.openPasswordModal = function (opts) {
+        opts = opts || {};
+        const title = opts.title || 'Password';
+        const message = opts.message || '';
+        const password = opts.password || '';
+
+        return new Promise((resolve) => {
+            const overlay = overlayEl();
+            const card = cardEl();
+
+            card.innerHTML = `
+                <h3 style="font-size:1rem;font-weight:800;color:var(--color-text-primary);margin:0 0 0.5rem">${title}</h3>
+                <p style="font-size:0.8125rem;color:var(--color-text-secondary);line-height:1.5;margin:0 0 1rem">${message}</p>
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+                    <input type="text" readonly data-password value="${password.replace(/"/g, '&quot;')}"
+                        style="flex:1;padding:0.5rem 0.75rem;border-radius:0.5rem;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);color:var(--color-text-primary);font-size:0.875rem;font-family:monospace;box-sizing:border-box">
+                    <button type="button" data-copy style="padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.75rem;font-weight:700;background:var(--color-bg-main);color:var(--color-text-primary);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);cursor:pointer">Copy</button>
+                </div>
+                <p style="font-size:0.6875rem;color:var(--color-text-muted, var(--color-text-secondary));margin:0 0 1.25rem">This will not be shown again.</p>
+                <div style="display:flex;justify-content:flex-end">
+                    <button type="button" data-close style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;border:none;cursor:pointer;color:var(--color-bg-main);background:var(--color-primary)">Done</button>
+                </div>
+            `;
+            overlay.appendChild(card);
+
+            const finish = () => { close(overlay); resolve(); };
+            const input = card.querySelector('[data-password]');
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(); });
+            card.querySelector('[data-close]').addEventListener('click', finish);
+            card.querySelector('[data-copy]').addEventListener('click', () => {
+                input.select();
+                navigator.clipboard.writeText(input.value).then(() => {
+                    if (typeof showToast === 'function') showToast('Password copied', 'success');
+                });
+            });
+            document.addEventListener('keydown', function onKey(e) {
+                if (e.key === 'Escape') { finish(); document.removeEventListener('keydown', onKey); }
+            });
+
+            show(overlay, card);
+        });
+    };
+
     window.openPromptModal = function (opts) {
         opts = opts || {};
         const title = opts.title || 'Enter a value';

@@ -2,9 +2,9 @@
 // subject/body that orgs can override (stored in tbl_email_templates); reverting
 // just deletes the override row so the default here takes effect again.
 
-export type EmailTemplateType = 'test' | 'down' | 'recovery' | 'paused' | 'forgot_password' | 'invite';
+export type EmailTemplateType = 'test' | 'down' | 'recovery' | 'paused' | 'forgot_password' | 'invite' | 'admin_password_reset';
 
-export const EMAIL_TEMPLATE_TYPES: EmailTemplateType[] = ['test', 'down', 'recovery', 'paused', 'forgot_password', 'invite'];
+export const EMAIL_TEMPLATE_TYPES: EmailTemplateType[] = ['test', 'down', 'recovery', 'paused', 'forgot_password', 'invite', 'admin_password_reset'];
 
 export const EMAIL_TEMPLATE_META: Record<EmailTemplateType, { label: string; description: string; vars: string[] }> = {
     test: {
@@ -35,7 +35,12 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateType, { label: string; des
     invite: {
         label: 'Invite',
         description: 'Sent when a new user is invited to join the organization.',
-        vars: ['user_name', 'org_name', 'inviter_email', 'action_url', 'expires_in'],
+        vars: ['user_name', 'org_name', 'inviter_email', 'login_url', 'temp_password'],
+    },
+    admin_password_reset: {
+        label: 'Password Reset (Admin)',
+        description: 'Sent when an admin resets a member\'s password.',
+        vars: ['user_name', 'org_name', 'actor_email', 'login_url', 'temp_password'],
     },
 };
 
@@ -159,8 +164,19 @@ ${button('Reset Password', '{{action_url}}')}
         subject: `You've been invited to join {{org_name}} on ${APP_NAME}`,
         body: `<h2 style="margin:0 0 12px;color:#f5f7fa;font-size:18px;">You're invited 🎉</h2>
 <p style="margin:0 0 8px;">Hi {{user_name}}, <strong>{{inviter_email}}</strong> invited you to join <strong>{{org_name}}</strong> on ${APP_NAME}.</p>
-${button('Set Up Your Account', '{{action_url}}')}
-<p style="margin:12px 0 0;color:#64748b;font-size:12px;">This link expires in {{expires_in}}.</p>`,
+<p style="margin:0 0 4px;">Your temporary password is:</p>
+<p style="margin:0 0 12px;padding:10px 14px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:16px;letter-spacing:1px;color:#f5f7fa;">{{temp_password}}</p>
+${button('Log In', '{{login_url}}')}
+<p style="margin:12px 0 0;color:#64748b;font-size:12px;">Please change your password after logging in.</p>`,
+    },
+    admin_password_reset: {
+        subject: `Your {{org_name}} password was reset`,
+        body: `<h2 style="margin:0 0 12px;color:#f5f7fa;font-size:18px;">Your password was reset</h2>
+<p style="margin:0 0 8px;">Hi {{user_name}}, <strong>{{actor_email}}</strong> reset your password for <strong>{{org_name}}</strong>.</p>
+<p style="margin:0 0 4px;">Your new temporary password is:</p>
+<p style="margin:0 0 12px;padding:10px 14px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:16px;letter-spacing:1px;color:#f5f7fa;">{{temp_password}}</p>
+${button('Log In', '{{login_url}}')}
+<p style="margin:12px 0 0;color:#64748b;font-size:12px;">Please change your password after logging in.</p>`,
     },
 };
 
@@ -175,5 +191,6 @@ export const SAMPLE_VARS: Record<EmailTemplateType, Record<string, string>> = {
     recovery: { monitor_name: 'api.example.com', org_name: 'Acme Inc', action_url: `${getAppUrl()}/dashboard` },
     paused: { monitor_name: 'api.example.com', org_name: 'Acme Inc', actor_email: 'admin@example.com', action_url: `${getAppUrl()}/dashboard` },
     forgot_password: { user_name: 'Jamie', org_name: 'Acme Inc', action_url: `${getAppUrl()}/auth/reset-password?token=sample`, expires_in: '1 hour' },
-    invite: { user_name: 'Jamie', org_name: 'Acme Inc', inviter_email: 'admin@example.com', action_url: `${getAppUrl()}/auth/reset-password?token=sample`, expires_in: '24 hours' },
+    invite: { user_name: 'Jamie', org_name: 'Acme Inc', inviter_email: 'admin@example.com', login_url: `${getAppUrl()}/auth/login`, temp_password: 'Xk3#mPq9wRz2' },
+    admin_password_reset: { user_name: 'Jamie', org_name: 'Acme Inc', actor_email: 'admin@example.com', login_url: `${getAppUrl()}/auth/login`, temp_password: 'Xk3#mPq9wRz2' },
 };

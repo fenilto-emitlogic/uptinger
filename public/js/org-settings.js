@@ -89,6 +89,7 @@
                     <button onclick="confirmMemberRole(${m.user_id})" class="hidden text-xs text-[var(--color-primary)] font-bold hover:underline" data-save-btn>Save</button>
                     <button onclick="cancelMemberRoleEdit(${m.user_id})" class="hidden text-xs text-[var(--color-text-muted)] hover:underline" data-cancel-btn>Cancel</button>
                     <button onclick="manageMemberGroups(${m.user_id})" class="text-xs text-[var(--color-primary)] hover:underline">Groups</button>
+                    <button onclick="resetMemberPassword(${m.user_id}, '${(m.email || '').replace(/'/g, "\\'")}')" class="text-xs text-[var(--color-primary)] hover:underline">Reset Password</button>
                     <button onclick="removeMember(${m.user_id})" class="text-xs text-[var(--color-error)] hover:underline">Remove</button>
                 </div>
             </div>
@@ -207,6 +208,25 @@
         const { data } = await api(`/api/org/${ORG_ID}/members/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role_id: roleId }) });
         showToast(data.message, data.status ? 'success' : 'error');
         if (data.status) loadMembers();
+    };
+
+    window.resetMemberPassword = async function (userId, email) {
+        const ok = await openConfirmModal({
+            title: 'Reset Password',
+            message: `Generate a new password for ${email}? Their current password will stop working immediately.`,
+            confirmLabel: 'Reset Password',
+            danger: true
+        });
+        if (!ok) return;
+
+        const { data } = await api(`/api/org/${ORG_ID}/members/${userId}/reset-password`, { method: 'POST' });
+        if (!data.status) return showToast(data.message, 'error');
+
+        await openPasswordModal({
+            title: 'Password Reset',
+            message: `New password for ${email}. If SMTP is configured, it has also been emailed to them.`,
+            password: data.data.tempPassword
+        });
     };
 
     window.removeMember = async function (userId) {
