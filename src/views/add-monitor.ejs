@@ -314,23 +314,35 @@
                             Nothing else needs to be installed on the server.</p>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4">
-                        <div>
-                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Interval
+                    <div id="panelMobile"
+                        class="hidden space-y-2 bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] p-4 rounded-xl border border-[var(--color-bg-surface)]">
+                        <h4 class="font-bold text-[var(--color-text-primary)]">Mobile App Monitor</h4>
+                        <p class="text-[11px] text-[var(--color-text-secondary)]">No hostname or URL needed — after
+                            saving, you'll get an ingest URL and token to configure in your app's Uptinger SDK. Your
+                            app pushes crash reports, custom events, and session/usage data in batches; this monitor
+                            aggregates crash analytics, event tracking, and usage/adoption stats. No live/real-time
+                            tracking — data appears once your app flushes its next batch.</p>
+                    </div>
+
+                    <div id="intervalGroup" class="grid grid-cols-3 gap-4">
+                        <div id="intervalFieldWrap">
+                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1" id="intervalLabel">Interval
                                 (sec)</label>
                             <input type="number" id="formInterval" min="10" max="86400" value="60"
                                 class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
                         </div>
-                        <div>
-                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retries</label>
-                            <input type="number" id="formRetries" min="0" max="10" value="3"
-                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retry
-                                Interval</label>
-                            <input type="number" id="formRetryInterval" min="5" value="60"
-                                class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                        <div id="retriesFieldsWrap" class="contents">
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retries</label>
+                                <input type="number" id="formRetries" min="0" max="10" value="3"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-[var(--color-text-secondary)] mb-1">Retry
+                                    Interval</label>
+                                <input type="number" id="formRetryInterval" min="5" value="60"
+                                    class="w-full bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text-primary)] focus:outline-none">
+                            </div>
                         </div>
                     </div>
 
@@ -538,6 +550,27 @@
                 document.getElementById('panelDocker').classList.toggle('hidden', type !== 'docker');
                 document.getElementById('panelPush').classList.toggle('hidden', type !== 'push' && type !== 'manual');
                 document.getElementById('panelVps').classList.toggle('hidden', type !== 'vps');
+                document.getElementById('panelMobile').classList.toggle('hidden', type !== 'mobile');
+                // Retries/Retry Interval only mean something for the actively-polled retry
+                // loop in performCheck()/recordResult() (uptinger.ts) — none of the passive
+                // types (push, manual, vps, mobile) ever go through that loop, so these two
+                // fields are always dead config for them.
+                const passiveTypes = ['push', 'manual', 'vps', 'mobile'];
+                // retriesFieldsWrap carries Tailwind's `contents` utility (so its two
+                // children lay out directly in the parent grid, not as a nested block) —
+                // toggling `hidden` on the same element would fight `contents` for the
+                // `display` property depending on generated CSS order, so swap the class
+                // outright instead of just adding/removing `hidden` alongside it.
+                const retriesWrap = document.getElementById('retriesFieldsWrap');
+                retriesWrap.className = passiveTypes.includes(type) ? 'hidden' : 'contents';
+                // Interval, unlike Retries, is NOT dead for 'vps': checkVpsStaleness()
+                // (uptinger.ts) uses it to compute how long to wait for the agent before
+                // flipping the monitor OFFLINE (max(interval, 30) * 3 seconds) — it just
+                // means "offline after this long without a push" rather than "poll this
+                // often". Only push/manual/mobile (no staleness concept at all) hide it.
+                const intervalHiddenTypes = ['push', 'manual', 'mobile'];
+                document.getElementById('intervalFieldWrap').classList.toggle('hidden', intervalHiddenTypes.includes(type));
+                document.getElementById('intervalLabel').innerText = type === 'vps' ? 'Offline After (sec)' : 'Interval (sec)';
 
                 const hostLabel = document.getElementById('hostLabel');
                 hostLabel.innerText = dnsTypes.includes(type) ? 'Domain Name' : 'Hostname / IP';
@@ -599,17 +632,11 @@
                             const pushUrl = `${window.location.origin}/api/push/${m.id}/${m.parsed_config.push_token}`;
                             window.prompt('Monitor created. Hit this URL from your script/cron job to send a heartbeat (append ?status=down to report failure):', pushUrl);
                             window.location.href = '/dashboard';
+                        } else if (!monitorId && m && m.type === 'mobile' && m.parsed_config && m.parsed_config.mobile_token) {
+                            const ingestUrl = `${window.location.origin}/api/mobile/${m.id}/ingest`;
+                            showMobileInstallModal(ingestUrl, m.parsed_config.mobile_token);
                         } else if (!monitorId && m && m.type === 'vps') {
-                            fetch(`/api/monitors/${m.id}/agent-install`)
-                                .then(r => r.json())
-                                .then(installRes => {
-                                    if (installRes.status && installRes.data && installRes.data.docker_run) {
-                                        showAgentInstallModal(installRes.data.docker_run, installRes.data.warning);
-                                    } else {
-                                        window.location.href = '/dashboard';
-                                    }
-                                })
-                                .catch(() => { window.location.href = '/dashboard'; });
+                            showVpsInstallModal(m.id);
                         } else {
                             window.location.href = '/dashboard';
                         }
@@ -620,41 +647,217 @@
                 });
             }
 
-            // Shows the generated docker run command with a copy button, then sends the
-            // user to the dashboard once they close it — mirrors the push-URL prompt() above
-            // but a multi-line shell command needs a real textarea, not window.prompt().
-            function showAgentInstallModal(dockerRun, warning) {
+            // Same content/behavior as the VPS "Install Agent" modal on the dashboard (see
+            // dashboard.ejs's showVpsInstallModal) — kept as its own copy here since this is a
+            // standalone page with no shared DOM to reuse that one from. Update both together.
+            // The one behavioral difference: closing this one sends the user to the dashboard
+            // (there's no "current page" content to return to right after creating a monitor),
+            // where the dashboard's own version just closes and stays put.
+            function showVpsInstallModal(monitorId) {
+                fetch(`/api/monitors/${monitorId}/agent-install`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.status || !res.data || !res.data.docker_run) {
+                            if (window.showToast) showToast(res.message || 'Failed to load install command', 'error');
+                            window.location.href = '/dashboard';
+                            return;
+                        }
+
+                        const tabs = [
+                            { key: 'run', label: 'docker run', content: res.data.docker_run },
+                            { key: 'compose', label: 'docker compose', content: res.data.docker_compose_install }
+                        ];
+                        let activeTab = 'run';
+
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:1rem;';
+                        const card = document.createElement('div');
+                        card.style.cssText = 'width:100%;max-width:42rem;background:var(--color-bg-surface);border:1px solid color-mix(in srgb, var(--color-border) 80%, transparent);border-radius:1rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);padding:1.5rem;max-height:90vh;overflow:auto;';
+                        card.innerHTML = `
+                            <h3 style="font-size:1rem;font-weight:800;color:var(--color-text-primary);margin:0 0 0.75rem">Monitor created — install the agent</h3>
+                            ${res.data.warning ? `<p style="font-size:0.8125rem;line-height:1.5;margin:0 0 1rem;padding:0.75rem;border-radius:0.5rem;background:color-mix(in srgb, var(--color-error) 12%, transparent);border:1px solid color-mix(in srgb, var(--color-error) 30%, transparent);color:var(--color-error);font-weight:600">${res.data.warning}</p>` : ''}
+                            <div data-tabs style="display:flex;gap:0.375rem;margin:0 0 0.75rem"></div>
+                            <p data-tab-hint style="font-size:0.75rem;color:var(--color-text-muted);margin:0 0 0.5rem"></p>
+                            <pre style="white-space:pre-wrap;word-break:break-all;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.875rem;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);margin:0 0 1rem;max-height:16rem;overflow:auto"></pre>
+                            <details style="margin:0 0 1rem">
+                                <summary style="cursor:pointer;font-size:0.8125rem;font-weight:700;color:var(--color-text-secondary)">Nginx stub_status config (only needed if you want Nginx stats)</summary>
+                                <p style="font-size:0.75rem;color:var(--color-text-muted);margin:0.5rem 0">Add this <code>server</code> block inside Nginx's <code>http {}</code> block, then reload Nginx. Don't publish this port in any compose <code>ports:</code> — leaving it unpublished keeps it reachable only from containers on the same Docker network as this agent.</p>
+                                <pre style="white-space:pre-wrap;word-break:break-all;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.875rem;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);margin:0;max-height:12rem;overflow:auto"></pre>
+                            </details>
+                            <div style="display:flex;justify-content:space-between;gap:0.5rem">
+                                <button type="button" data-regen style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;background:transparent;color:var(--color-error);border:1px solid color-mix(in srgb, var(--color-error) 40%, transparent);cursor:pointer">Regenerate Token</button>
+                                <div style="display:flex;gap:0.5rem">
+                                    <button type="button" data-copy style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;background:transparent;color:var(--color-text-secondary);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);cursor:pointer">Copy</button>
+                                    <button type="button" data-done style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;border:none;cursor:pointer;color:var(--color-bg-main);background:var(--color-primary)">Done</button>
+                                </div>
+                            </div>
+                        `;
+
+                        const tabsWrap = card.querySelector('[data-tabs]');
+                        const pre = card.querySelector('pre');
+                        const hint = card.querySelector('[data-tab-hint]');
+                        const nginxPre = card.querySelectorAll('pre')[1];
+                        nginxPre.textContent = res.data.nginx_stub_status_snippet || '';
+
+                        function renderTab() {
+                            const tab = tabs.find(t => t.key === activeTab);
+                            pre.textContent = tab.content;
+                            hint.textContent = activeTab === 'compose'
+                                ? 'Writes docker-compose.yml alongside the agent source, then `docker compose up -d --build`. Stop it later with `docker compose down` from the same directory.'
+                                : 'One-shot `docker run` — stop/remove it later with `docker stop uptinger-agent && docker rm uptinger-agent`.';
+                            Array.from(tabsWrap.children).forEach(btn => {
+                                const isActive = btn.dataset.key === activeTab;
+                                btn.style.background = isActive ? 'var(--color-primary)' : 'transparent';
+                                btn.style.color = isActive ? 'var(--color-bg-main)' : 'var(--color-text-secondary)';
+                                btn.style.border = isActive ? 'none' : '1px solid color-mix(in srgb, var(--color-border) 70%, transparent)';
+                            });
+                        }
+                        tabs.forEach(t => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.dataset.key = t.key;
+                            btn.textContent = t.label;
+                            btn.style.cssText = 'padding:0.375rem 0.75rem;border-radius:0.5rem;font-size:0.75rem;font-weight:700;cursor:pointer';
+                            btn.addEventListener('click', () => { activeTab = t.key; renderTab(); });
+                            tabsWrap.appendChild(btn);
+                        });
+                        renderTab();
+
+                        overlay.appendChild(card);
+                        document.body.appendChild(overlay);
+
+                        const goDashboard = () => { overlay.remove(); window.location.href = '/dashboard'; };
+                        overlay.addEventListener('click', (e) => { if (e.target === overlay) goDashboard(); });
+                        card.querySelector('[data-done]').addEventListener('click', goDashboard);
+                        card.querySelector('[data-copy]').addEventListener('click', () => {
+                            navigator.clipboard.writeText(tabs.find(t => t.key === activeTab).content).then(() => {
+                                if (window.showToast) showToast('Copied to clipboard', 'success');
+                            });
+                        });
+                        card.querySelector('[data-regen]').addEventListener('click', async () => {
+                            const ok = await openConfirmModal({
+                                title: 'Regenerate agent token?',
+                                message: 'The old token stops working immediately. You will need to reinstall the agent on the VPS with the new command.',
+                                confirmLabel: 'Regenerate',
+                                danger: true
+                            });
+                            if (!ok) return;
+                            fetch(`/api/monitors/${monitorId}/agent-token/regenerate`, { method: 'POST' })
+                                .then(r => r.json())
+                                .then(() => { overlay.remove(); showVpsInstallModal(monitorId); });
+                        });
+                    })
+                    .catch(() => {
+                        if (window.showToast) showToast('Failed to load install command', 'error');
+                        window.location.href = '/dashboard';
+                    });
+            }
+
+            // Same content as the "Ingest URL & Token" modal on the dashboard (see
+            // dashboard.ejs's showMobileInstallModal) — kept as its own copy here since this is
+            // a standalone page with no shared DOM to reuse that one from. Update both together.
+            function showMobileInstallModal(ingestUrl, token) {
+                const curlSample = `curl -X POST "${ingestUrl}" \\
+  -H "Authorization: Bearer ${token}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "device_id": "test-device-1",
+    "session_id": "test-session-1",
+    "app_version": "1.0.0",
+    "os_name": "android",
+    "os_version": "14",
+    "events": [
+      { "type": "session_start" },
+      { "type": "custom", "name": "screen_view", "props": { "screen": "Home" } }
+    ]
+  }'`;
+
+                const fetchSample = `async function sendUptingerEvents(events) {
+  await fetch("${ingestUrl}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer ${token}"
+    },
+    body: JSON.stringify({
+      device_id: getOrCreateDeviceId(), // your own stable per-install id
+      app_version: "1.0.0",
+      events
+    })
+  });
+}
+
+// e.g. on a screen change:
+sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Home' } }]);`;
+
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:1rem;';
 
                 const card = document.createElement('div');
-                card.style.cssText = 'width:100%;max-width:38rem;background:var(--color-bg-surface);border:1px solid color-mix(in srgb, var(--color-border) 80%, transparent);border-radius:1rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);padding:1.5rem;';
+                card.style.cssText = 'width:100%;max-width:42rem;max-height:85vh;overflow-y:auto;background:var(--color-bg-surface);border:1px solid color-mix(in srgb, var(--color-border) 80%, transparent);border-radius:1rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);padding:1.5rem;';
                 card.innerHTML = `
-                    <h3 style="font-size:1rem;font-weight:800;color:var(--color-text-primary);margin:0 0 0.5rem">Install the agent on your VPS</h3>
+                    <h3 style="font-size:1rem;font-weight:800;color:var(--color-text-primary);margin:0 0 0.25rem">Monitor created — Mobile App Integration</h3>
                     <p style="font-size:0.8125rem;color:var(--color-text-secondary);line-height:1.5;margin:0 0 1rem">
-                        Run this on your Linux VPS (Docker required). It downloads the agent's source from this
-                        server and builds the image locally — nothing is pulled from a registry. Reporting starts
-                        within 30 seconds, and this monitor will show OFFLINE until it does.
+                        Send crash reports, custom events, and session data from your app to this monitor.
                     </p>
-                    ${warning ? `<p style="font-size:0.8125rem;line-height:1.5;margin:0 0 1rem;padding:0.75rem;border-radius:0.5rem;background:color-mix(in srgb, var(--color-error) 12%, transparent);border:1px solid color-mix(in srgb, var(--color-error) 30%, transparent);color:var(--color-error);font-weight:600">${warning}</p>` : ''}
-                    <pre style="white-space:pre-wrap;word-break:break-all;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.875rem;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);margin:0 0 1rem;max-height:16rem;overflow:auto"></pre>
-                    <div style="display:flex;justify-content:flex-end;gap:0.5rem">
-                        <button type="button" data-copy style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;background:transparent;color:var(--color-text-secondary);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);cursor:pointer">Copy</button>
+
+                    <label style="display:block;font-size:0.625rem;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);margin-bottom:0.375rem">Ingest URL</label>
+                    <div style="display:flex;align-items:center;gap:0.375rem;background:var(--color-bg-main);border:1px solid var(--color-border);border-radius:0.75rem;padding:0.5rem 0.75rem;margin-bottom:0.875rem">
+                        <code data-field="url" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></code>
+                        <button type="button" data-copy="url" title="Copy" style="flex-shrink:0;padding:0.25rem;border-radius:0.375rem;border:none;background:transparent;color:var(--color-text-muted);cursor:pointer">⧉</button>
+                    </div>
+
+                    <label style="display:block;font-size:0.625rem;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);margin-bottom:0.375rem">Mobile Token (Bearer) — keep this secret</label>
+                    <div style="display:flex;align-items:center;gap:0.375rem;background:var(--color-bg-main);border:1px solid var(--color-border);border-radius:0.75rem;padding:0.5rem 0.75rem;margin-bottom:0.875rem">
+                        <code data-field="token" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></code>
+                        <button type="button" data-copy="token" title="Copy" style="flex-shrink:0;padding:0.25rem;border-radius:0.375rem;border:none;background:transparent;color:var(--color-text-muted);cursor:pointer">⧉</button>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.375rem">
+                        <label style="font-size:0.625rem;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted)">Quick test (curl)</label>
+                        <button type="button" data-copy="curl" title="Copy" style="padding:0.25rem;border-radius:0.375rem;border:none;background:transparent;color:var(--color-text-muted);cursor:pointer">⧉</button>
+                    </div>
+                    <pre data-field="curl" style="white-space:pre;overflow-x:auto;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.75rem;font-family:'JetBrains Mono',monospace;font-size:0.6875rem;color:var(--color-text-secondary);margin:0 0 0.875rem"></pre>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.375rem">
+                        <label style="font-size:0.625rem;font-weight:800;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted)">React Native / Expo (fetch)</label>
+                        <button type="button" data-copy="fetch" title="Copy" style="padding:0.25rem;border-radius:0.375rem;border:none;background:transparent;color:var(--color-text-muted);cursor:pointer">⧉</button>
+                    </div>
+                    <pre data-field="fetch" style="white-space:pre;overflow-x:auto;background:var(--color-bg-main);border:1px solid color-mix(in srgb, var(--color-border) 70%, transparent);border-radius:0.5rem;padding:0.75rem;font-family:'JetBrains Mono',monospace;font-size:0.6875rem;color:var(--color-text-secondary);margin:0 0 1rem"></pre>
+
+                    <p style="font-size:0.75rem;line-height:1.5;margin:0 0 1rem;padding:0.75rem;border-radius:0.75rem;background:color-mix(in srgb, var(--color-primary) 8%, transparent);border:1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);color:var(--color-text-secondary)">
+                        Building this into a React Native / Expo app rather than testing with curl? A ready-to-copy
+                        reference implementation (device id, batching queue, crash handler, session + screen
+                        tracking) is documented in <code style="font-family:'JetBrains Mono',monospace">docs/mobile-monitor-integration.md</code>
+                        and mirrored in <code style="font-family:'JetBrains Mono',monospace">uptinger-mobile/README.md</code>.
+                    </p>
+
+                    <div style="display:flex;justify-content:flex-end">
                         <button type="button" data-done style="padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8125rem;font-weight:700;border:none;cursor:pointer;color:var(--color-bg-main);background:var(--color-primary)">Done</button>
                     </div>
                 `;
-                // textContent (not innerHTML) for the command — it embeds the agent token,
-                // and this keeps that value unambiguously a literal string, not markup.
-                card.querySelector('pre').textContent = dockerRun;
+
+                // textContent (not innerHTML) for every value below — the token and URL are
+                // literal strings, not markup, and the code samples contain quotes/braces that
+                // must render as-is rather than being parsed as HTML.
+                card.querySelector('[data-field="url"]').textContent = ingestUrl;
+                card.querySelector('[data-field="token"]').textContent = token;
+                card.querySelector('[data-field="curl"]').textContent = curlSample;
+                card.querySelector('[data-field="fetch"]').textContent = fetchSample;
+
                 overlay.appendChild(card);
                 document.body.appendChild(overlay);
 
                 const goDashboard = () => { overlay.remove(); window.location.href = '/dashboard'; };
                 overlay.addEventListener('click', (e) => { if (e.target === overlay) goDashboard(); });
                 card.querySelector('[data-done]').addEventListener('click', goDashboard);
-                card.querySelector('[data-copy]').addEventListener('click', () => {
-                    navigator.clipboard.writeText(dockerRun).then(() => {
-                        if (window.showToast) showToast('Copied to clipboard', 'success');
+
+                const copyValues = { url: ingestUrl, token, curl: curlSample, fetch: fetchSample };
+                card.querySelectorAll('[data-copy]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        navigator.clipboard.writeText(copyValues[btn.dataset.copy]).then(() => {
+                            if (window.showToast) showToast('Copied to clipboard', 'success');
+                        });
                     });
                 });
             }

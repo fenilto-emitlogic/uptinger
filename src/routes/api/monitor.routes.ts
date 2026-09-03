@@ -15,6 +15,7 @@ import { sendTemplatedMail } from '../../utils/notify.utils.js';
 import { organizationModel } from '../../models/organization.model.js';
 import { getAppUrl } from '../../config/email-templates.js';
 import { vpsMetricModel } from '../../models/vps-metric.model.js';
+import { mobileEventModel } from '../../models/mobile-event.model.js';
 
 // No registry image: the install command downloads the agent's own source (served
 // straight from this instance, see GET /api/agent/source/:file) and builds it on the
@@ -169,7 +170,15 @@ router.post('/backup/import', requirePermission(PERMISSIONS.MONITOR_CREATE), (re
 router.get('/:id', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
     try {
         const id = parseInt(String(req.params.id));
-        const monitor = monitorModel.findById(id);
+        // The embedded heartbeats/logs on this response default to the last 50 checks
+        // (see parseMonitor) — callers that only render a small preview (the mobile
+        // detail screen) can ask for fewer via ?limit=, clamped so a bogus/huge value
+        // can't turn this back into an unbounded query.
+        const requestedLimit = parseInt(String(req.query.limit || ''), 10);
+        const checksLimit = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(requestedLimit, 500)
+            : undefined;
+        const monitor = checksLimit ? monitorModel.findById(id, checksLimit) : monitorModel.findById(id);
         if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
             return sendError(res, 'Monitor not found', null, 404);
         }
@@ -189,7 +198,9 @@ const HEARTBEAT_RANGE_MS: Record<string, number> = {
     '1h': 60 * 60 * 1000,
     '6h': 6 * 60 * 60 * 1000,
     '24h': 24 * 60 * 60 * 1000,
-    '7d': 7 * 24 * 60 * 60 * 1000
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '14d': 14 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000
 };
 
 router.get('/:id/heartbeats', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
@@ -208,7 +219,18 @@ router.get('/:id/heartbeats', requirePermission(PERMISSIONS.MONITOR_VIEW), (req:
         const rangeMs = HEARTBEAT_RANGE_MS[range];
         const sinceIso = rangeMs ? new Date(Date.now() - rangeMs).toISOString() : undefined;
 
-        const heartbeats = monitorModel.getHeartbeatsInRange(id, sinceIso);
+        // Callers (the mobile app in particular, which only ever renders a small
+        // sparkline) can ask for fewer rows than the 500-row default the web dashboard's
+        // full history chart relies on — clamped so a bogus/huge value can't turn this
+        // back into an unbounded query.
+        const requestedLimit = parseInt(String(req.query.limit || ''), 10);
+        const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(requestedLimit, 500)
+            : undefined;
+
+        const heartbeats = limit
+            ? monitorModel.getHeartbeatsInRange(id, sinceIso, limit)
+            : monitorModel.getHeartbeatsInRange(id, sinceIso);
         return sendSuccess(res, 'Heartbeats', { heartbeats });
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to fetch heartbeats', null, 500);
@@ -308,6 +330,12 @@ router.post('/', requirePermission(PERMISSIONS.MONITOR_CREATE), (req: OrgScopedR
         // each metrics push, so it's generated with the same entropy as push_token.
         if (monitorType === 'vps') {
             configPayload.agent_token = crypto.randomBytes(20).toString('hex');
+        }
+
+        // 'mobile' monitors are fed by a mobile app's Uptinger SDK batching crash/event/
+        // usage data to the ingest endpoint — same bearer-token pattern as agent_token.
+        if (monitorType === 'mobile') {
+            configPayload.mobile_token = crypto.randomBytes(20).toString('hex');
         }
 
         const newMonitor = monitorModel.create({
@@ -739,6 +767,56 @@ router.post('/:id/agent-token/regenerate', requirePermission(PERMISSIONS.MONITOR
     }
 });
 
+// GET /api/monitors/:id/mobile-install - Ingest URL + token for a 'mobile' monitor,
+// for a user setting up the SDK in their app (see docs/mobile-monitor-integration.md).
+router.get('/:id/mobile-install', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (monitor.type !== 'mobile') {
+            return sendError(res, 'Mobile install info is only available for Mobile App monitors', null, 400);
+        }
+
+        const token = monitor.parsed_config?.mobile_token;
+        if (!token) {
+            return sendError(res, 'This monitor has no mobile token — recreate it or regenerate the token', null, 400);
+        }
+
+        return sendSuccess(res, 'Mobile install info', {
+            token,
+            ingest_url: `${getAppUrl()}/api/mobile/${id}/ingest`
+        });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to build mobile install info', null, 500);
+    }
+});
+
+// POST /api/monitors/:id/mobile-token/regenerate - Invalidate the current mobile token and
+// issue a new one. The old token stops authenticating ingest pushes immediately; the app's
+// SDK needs to be reconfigured with the new token to resume reporting.
+router.post('/:id/mobile-token/regenerate', requirePermission(PERMISSIONS.MONITOR_EDIT), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const existing = monitorModel.findById(id);
+        if (!existing || existing.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (existing.type !== 'mobile') {
+            return sendError(res, 'Only Mobile App monitors have a mobile token', null, 400);
+        }
+
+        const newToken = crypto.randomBytes(20).toString('hex');
+        monitorModel.update(id, { configObj: { mobile_token: newToken } });
+
+        return sendSuccess(res, 'Mobile token regenerated', { token: newToken });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to regenerate mobile token', null, 500);
+    }
+});
+
 // GET /api/monitors/:id/vps-metrics?range=1h|6h|24h|7d - Time-series metrics pushed by the agent
 router.get('/:id/vps-metrics', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
     try {
@@ -759,6 +837,76 @@ router.get('/:id/vps-metrics', requirePermission(PERMISSIONS.MONITOR_VIEW), (req
         return sendSuccess(res, 'VPS metrics', { metrics });
     } catch (err: any) {
         return sendError(res, err.message || 'Failed to fetch VPS metrics', null, 500);
+    }
+});
+
+// GET /api/monitors/:id/mobile-analytics?range=1h|6h|24h|7d - Crash/event/usage analytics
+// composed for the dashboard's Mobile Analytics card. Defaults to a 7d window (range
+// omitted or unrecognized) since usage/adoption stats are meaningless over a 1h slice.
+router.get('/:id/mobile-analytics', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (monitor.type !== 'mobile') {
+            return sendError(res, 'Mobile analytics are only available for Mobile App monitors', null, 400);
+        }
+
+        const range = String(req.query.range || '');
+        const rangeMs = HEARTBEAT_RANGE_MS[range] || (7 * 24 * 60 * 60 * 1000);
+        const sinceIso = new Date(Date.now() - rangeMs).toISOString();
+        const dayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const weekIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const monthIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        return sendSuccess(res, 'Mobile analytics', {
+            crash_issues: mobileEventModel.listCrashIssues(id),
+            crash_free_rate: mobileEventModel.getCrashFreeRate(id, sinceIso),
+            dau: mobileEventModel.getDau(id, dayIso),
+            wau: mobileEventModel.getWau(id, weekIso),
+            mau: mobileEventModel.getMau(id, monthIso),
+            dau_series: mobileEventModel.getDauSeries(id, sinceIso),
+            session_counts: mobileEventModel.getSessionCounts(id, sinceIso),
+            version_breakdown: mobileEventModel.getVersionBreakdown(id, sinceIso),
+            os_breakdown: mobileEventModel.getOsBreakdown(id, sinceIso),
+            custom_events: mobileEventModel.listCustomEvents(id, sinceIso),
+            region_breakdown: mobileEventModel.getRegionBreakdown(id, sinceIso),
+            event_feed: mobileEventModel.getEventFeed(id, 100)
+        });
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to fetch mobile analytics', null, 500);
+    }
+});
+
+// GET /api/monitors/:id/mobile-events?limit=10&offset=0&type=crash - Paginated raw event
+// feed for a 'mobile' monitor. Separate from /mobile-analytics's embedded event_feed (which
+// the web dashboard fetches once, up to 100 rows, and slices/filters client-side) — the
+// mobile app pages through this one 10 at a time via limit/offset instead, real server-side
+// pagination rather than shipping everything and trimming client-side.
+router.get('/:id/mobile-events', requirePermission(PERMISSIONS.MONITOR_VIEW), (req: OrgScopedRequest, res) => {
+    try {
+        const id = parseInt(String(req.params.id));
+        const monitor = monitorModel.findById(id);
+        if (!monitor || monitor.org_id !== req.currentOrg?.org_id) {
+            return sendError(res, 'Monitor not found', null, 404);
+        }
+        if (monitor.type !== 'mobile') {
+            return sendError(res, 'Mobile events are only available for Mobile App monitors', null, 400);
+        }
+
+        const MAX_PAGE_SIZE = 50;
+        const requestedLimit = parseInt(String(req.query.limit ?? '10'), 10);
+        const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), MAX_PAGE_SIZE) : 10;
+        const requestedOffset = parseInt(String(req.query.offset ?? '0'), 10);
+        const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
+        const eventType = typeof req.query.type === 'string' && req.query.type ? req.query.type : undefined;
+
+        const page = mobileEventModel.getEventFeedPage(id, limit, offset, eventType);
+        return sendSuccess(res, 'Mobile events', page);
+    } catch (err: any) {
+        return sendError(res, err.message || 'Failed to fetch mobile events', null, 500);
     }
 });
 

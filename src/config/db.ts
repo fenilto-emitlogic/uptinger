@@ -308,6 +308,50 @@ db.exec(`
         FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
     );
 
+    -- Raw crash/error/custom-event/session records pushed by a mobile app's Uptinger
+    -- SDK (monitor_id must be of type 'mobile'). Source of truth; DAU/WAU/MAU, crash-free
+    -- rate, and version/OS breakdowns are computed live via GROUP BY over this table rather
+    -- than a maintained rollup — revisit if volume ever makes that too slow.
+    -- TODO: no retention/pruning policy yet; this table grows unbounded over time.
+    CREATE TABLE IF NOT EXISTS tbl_mobile_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        event_name TEXT,
+        device_id TEXT NOT NULL,
+        session_id TEXT,
+        app_version TEXT,
+        build_number TEXT,
+        os_name TEXT,
+        os_version TEXT,
+        device_model TEXT,
+        region TEXT,
+        locale TEXT,
+        timezone TEXT,
+        props TEXT,
+        stack_trace TEXT,
+        fatal INTEGER DEFAULT 0,
+        client_timestamp TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE
+    );
+
+    -- Deduplicated crash signatures, upserted incrementally on ingest so the crash
+    -- list doesn't need to re-group the full tbl_mobile_events history on every read.
+    CREATE TABLE IF NOT EXISTS tbl_mobile_crash_issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monitor_id INTEGER NOT NULL,
+        signature TEXT NOT NULL,
+        title TEXT,
+        first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        occurrence_count INTEGER NOT NULL DEFAULT 0,
+        is_fatal INTEGER NOT NULL DEFAULT 1,
+        sample_stack_trace TEXT,
+        FOREIGN KEY (monitor_id) REFERENCES tbl_monitors(id) ON DELETE CASCADE,
+        UNIQUE(monitor_id, signature)
+    );
+
     CREATE TABLE IF NOT EXISTS tbl_password_resets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -336,6 +380,10 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON tbl_user_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON tbl_password_resets(user_id);
     CREATE INDEX IF NOT EXISTS idx_vps_metrics_monitor_id_timestamp ON tbl_vps_metrics(monitor_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_mobile_events_monitor_created ON tbl_mobile_events(monitor_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_mobile_events_monitor_type ON tbl_mobile_events(monitor_id, event_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_mobile_events_device ON tbl_mobile_events(monitor_id, device_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_mobile_crash_issues_monitor ON tbl_mobile_crash_issues(monitor_id, last_seen_at);
 `);
 
 // Backfill: orgs created before roles existed get default Admin/Member roles,
@@ -380,6 +428,7 @@ const monitorTypeSeed: Array<{ key: string; label: string; description: string; 
     { key: 'vps', label: 'VPS Performance', description: 'CPU, RAM, disk, network and Nginx stats pushed by a lightweight agent installed on your server', icon: 'cpu', category: 'General', sort_order: 7 },
     { key: 'push', label: 'Push', description: 'Passive monitor that expects periodic pings from your service', icon: 'upload', category: 'Passive', sort_order: 1 },
     { key: 'manual', label: 'Manual', description: 'Manually managed status, not actively checked', icon: 'hand', category: 'Passive', sort_order: 2 },
+    { key: 'mobile', label: 'Mobile App', description: 'Crash, error, and usage analytics pushed from your mobile app', icon: 'smartphone', category: 'Passive', sort_order: 3 },
     { key: 'smtp', label: 'SMTP', description: 'Check an SMTP mail server connection', icon: 'mail', category: 'Specific', sort_order: 1 },
     { key: 'mqtt', label: 'MQTT', description: 'Check an MQTT broker topic', icon: 'radio', category: 'Specific', sort_order: 2 },
     { key: 'rabbitmq', label: 'RabbitMQ', description: 'Check a RabbitMQ node health', icon: 'inbox', category: 'Specific', sort_order: 3 },
@@ -441,6 +490,19 @@ if (!existingVpsMetricColumns.includes('nginx_error_log_size_bytes')) {
 }
 if (!existingVpsMetricColumns.includes('nginx_access_log_size_bytes')) {
     db.exec(`ALTER TABLE tbl_vps_metrics ADD COLUMN nginx_access_log_size_bytes INTEGER`);
+}
+
+// tbl_mobile_events.region/locale/timezone didn't exist in earlier installs — same
+// upgrade path as response_headers above.
+const existingMobileEventColumns = (db.prepare(`PRAGMA table_info(tbl_mobile_events)`).all() as { name: string }[]).map(c => c.name);
+if (!existingMobileEventColumns.includes('region')) {
+    db.exec(`ALTER TABLE tbl_mobile_events ADD COLUMN region TEXT`);
+}
+if (!existingMobileEventColumns.includes('locale')) {
+    db.exec(`ALTER TABLE tbl_mobile_events ADD COLUMN locale TEXT`);
+}
+if (!existingMobileEventColumns.includes('timezone')) {
+    db.exec(`ALTER TABLE tbl_mobile_events ADD COLUMN timezone TEXT`);
 }
 
 // Migrate legacy comma-separated tbl_monitors.tags into the tags table/join

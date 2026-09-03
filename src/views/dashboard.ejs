@@ -309,7 +309,6 @@
                                         </div>
 
                                         <!-- Nginx: error.log / access.log cards -->
-                                        <div id="vpsNginxNotDetected" class="hidden text-xs text-[var(--color-text-muted)]">Nginx not detected on this host (or stub_status isn't enabled).</div>
                                         <div id="vpsNginxCards" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
                                             <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
                                                 <div class="flex items-center justify-between">
@@ -336,6 +335,166 @@
                                         </div>
                                 </div>
                             </div>
+                            <!-- MOBILE ANALYTICS CARD (shown only for 'mobile' type monitors) -->
+                            <div id="mobileAnalyticsCard" class="hidden space-y-5">
+                                <div class="flex items-center justify-between flex-wrap gap-3">
+                                    <h2 class="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>Mobile Analytics</span>
+                                    </h2>
+                                    <button type="button" onclick="showMobileInstallModal()"
+                                        class="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--color-bg-main)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors">
+                                        Ingest URL &amp; Token
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 text-center space-y-1">
+                                        <p class="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Active Today</p>
+                                        <p id="mobileDau" class="text-xl font-black text-[var(--color-text-primary)]">-</p>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 text-center space-y-1">
+                                        <p class="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Active This Week</p>
+                                        <p id="mobileWau" class="text-xl font-black text-[var(--color-text-primary)]">-</p>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 text-center space-y-1">
+                                        <p class="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Active This Month</p>
+                                        <p id="mobileMau" class="text-xl font-black text-[var(--color-text-primary)]">-</p>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 text-center space-y-1">
+                                        <p class="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Crash-Free Rate</p>
+                                        <p id="mobileCrashFreeRate" class="text-xl font-black text-[var(--color-primary)]">-</p>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-4 text-center space-y-1">
+                                        <p class="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">Sessions (window)</p>
+                                        <p id="mobileSessions" class="text-xl font-black text-[var(--color-text-primary)]">-</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <!-- ACTIVE USERS PER DAY CHART CARD -->
+                                    <div class="lg:col-span-2 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="w-3 h-3 rounded bg-[var(--color-primary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"></span>
+                                                <h2 class="text-base font-bold text-[var(--color-text-primary)]">Active Users Per Day</h2>
+                                            </div>
+
+                                            <div class="relative">
+                                                <select id="mobileDauRangeFilter" onchange="fetchAndRenderMobileAnalytics(monitors.find(x => x.id === activeId))"
+                                                    class="appearance-none bg-[color-mix(in_srgb,var(--color-bg-main)_80%,transparent)] border border-[var(--color-border)] rounded-xl px-3.5 py-1.5 pr-8 text-xs font-medium text-[var(--color-text-secondary)] focus:outline-none focus:border-[color-mix(in_srgb,var(--color-primary)_50%,transparent)] cursor-pointer">
+                                                    <option value="7d">7 Days</option>
+                                                    <option value="14d">14 Days</option>
+                                                    <option value="30d">30 Days</option>
+                                                </select>
+                                                <svg class="w-3.5 h-3.5 text-[var(--color-text-secondary)] absolute right-2.5 top-2.5 pointer-events-none"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        <div class="relative h-64 w-full pt-2">
+                                            <canvas id="mobileDauChart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- CRASH-FREE VS CRASHED PIE CHART CARD -->
+                                    <div class="lg:col-span-1 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl space-y-4 flex flex-col">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="w-3 h-3 rounded bg-[var(--color-primary)] inline-block shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"></span>
+                                            <h2 class="text-base font-bold text-[var(--color-text-primary)]">Crash-Free vs Crashed</h2>
+                                        </div>
+
+                                        <div class="relative h-64 w-full pt-2 flex items-center justify-center">
+                                            <canvas id="mobileCrashPieChart"></canvas>
+                                        </div>
+
+                                        <div class="flex items-center justify-center space-x-4 text-xs font-medium">
+                                            <div class="flex items-center space-x-1.5">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></span>
+                                                <span class="text-[var(--color-text-secondary)]">Crash-Free</span>
+                                                <span id="pieCrashFreeValue"
+                                                    class="text-[var(--color-text-primary)] font-bold">-</span>
+                                            </div>
+                                            <div class="flex items-center space-x-1.5">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-[var(--color-error)]"></span>
+                                                <span class="text-[var(--color-text-secondary)]">Crashed</span>
+                                                <span id="pieCrashedValue"
+                                                    class="text-[var(--color-text-primary)] font-bold">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div class="lg:col-span-2 bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                        <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-error)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                            </svg>
+                                            <span>Crash Issues</span>
+                                        </h4>
+                                        <div id="mobileCrashIssues" class="max-h-64 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] space-y-1">
+                                            <p class="text-[var(--color-text-muted)]">No crashes reported yet.</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                        <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                            </svg>
+                                            <span>Top Custom Events</span>
+                                        </h4>
+                                        <div id="mobileCustomEvents" class="max-h-64 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] space-y-1">
+                                            <p class="text-[var(--color-text-muted)]">No custom events yet.</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                        <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.59 13.41L11 3.83A2 2 0 009.59 3H4a1 1 0 00-1 1v5.59a2 2 0 00.59 1.41l9.58 9.58a2 2 0 002.82 0l6.6-6.6a2 2 0 000-2.82z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01" />
+                                            </svg>
+                                            <span>App Version Adoption</span>
+                                        </h4>
+                                        <div id="mobileVersionBreakdown" class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] space-y-1">
+                                            <p class="text-[var(--color-text-muted)]">No data yet.</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                        <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 2H7a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01" />
+                                            </svg>
+                                            <span>OS Breakdown</span>
+                                        </h4>
+                                        <div id="mobileOsBreakdown" class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] space-y-1">
+                                            <p class="text-[var(--color-text-muted)]">No data yet.</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-5 shadow-xl space-y-3">
+                                        <h4 class="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M12 3a14.5 14.5 0 010 18M12 3a14.5 14.5 0 000 18" />
+                                            </svg>
+                                            <span>Region Breakdown</span>
+                                        </h4>
+                                        <div id="mobileRegionBreakdown" class="max-h-48 overflow-y-auto text-[11px] font-mono text-[var(--color-text-secondary)] space-y-1">
+                                            <p class="text-[var(--color-text-muted)]">No data yet.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Per-event detail (screen views, crashes, sessions, device info) lives in the
+                                     Heartbeat Event Logs table below, not here — see renderLogsTable()'s mobile
+                                     branch, which merges tbl_mobile_events into that same table for mobile monitors. -->
+                            </div>
+
                             <!-- KEY METRICS GRID CARD -->
                             <div id="httpMetricsCard"
                                 class="bg-[color-mix(in_srgb,var(--color-bg-surface)_60%,transparent)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl p-6 shadow-xl">
@@ -520,7 +679,7 @@
                                     <table class="w-full text-left text-xs text-[var(--color-text-secondary)]">
                                         <thead
                                             class="bg-[color-mix(in_srgb,var(--color-bg-main)_60%,transparent)] text-[var(--color-text-secondary)] font-semibold border-b border-[var(--color-bg-surface)]">
-                                            <tr>
+                                            <tr id="logsTableHeadRow">
                                                 <th class="py-2.5 px-4 rounded-l-xl">Timestamp</th>
                                                 <th class="py-2.5 px-4">Status</th>
                                                 <th class="py-2.5 px-4">Latency</th>
@@ -671,6 +830,92 @@
             </div>
         </div>
 
+        <!-- MOBILE APP INTEGRATION MODAL -->
+        <div id="mobileInstallModal"
+            class="fixed inset-0 z-50 bg-[color-mix(in_srgb,var(--color-bg-main)_85%,transparent)] backdrop-blur-md hidden flex items-center justify-center p-4">
+            <div class="bg-[var(--color-bg-surface)] border border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 transform transition-all scale-95 opacity-0 max-h-[85vh] overflow-y-auto"
+                id="mobileInstallContainer">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)] flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-[var(--color-text-primary)]">Mobile App Integration</h3>
+                            <p class="text-xs text-[var(--color-text-secondary)]">Send crash reports, custom events, and session data from your app.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeMobileInstallModal()"
+                        class="p-1.5 rounded-lg hover:bg-[var(--color-bg-main)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Ingest URL</label>
+                    <div class="flex items-center gap-1.5 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2">
+                        <code id="mobileInstallUrl" class="flex-1 text-xs font-mono text-[var(--color-text-primary)] truncate"></code>
+                        <button type="button" onclick="copyTextToClipboard(document.getElementById('mobileInstallUrl').textContent, this, 'Ingest URL copied', 'Failed to copy')"
+                            title="Copy" class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Mobile Token (Bearer) — keep this secret</label>
+                    <div class="flex items-center gap-1.5 bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl px-3 py-2">
+                        <code id="mobileInstallToken" class="flex-1 text-xs font-mono text-[var(--color-text-primary)] truncate"></code>
+                        <button type="button" onclick="copyTextToClipboard(document.getElementById('mobileInstallToken').textContent, this, 'Token copied', 'Failed to copy')"
+                            title="Copy" class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Quick test (curl)</label>
+                        <button type="button" onclick="copyTextToClipboard(document.getElementById('mobileInstallCurl').textContent, this, 'Copied', 'Failed to copy')"
+                            title="Copy" class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-main)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                    <pre id="mobileInstallCurl" class="text-[11px] font-mono bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 overflow-x-auto whitespace-pre text-[var(--color-text-secondary)]"></pre>
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">React Native / Expo (fetch)</label>
+                        <button type="button" onclick="copyTextToClipboard(document.getElementById('mobileInstallFetch').textContent, this, 'Copied', 'Failed to copy')"
+                            title="Copy" class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-main)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                    <pre id="mobileInstallFetch" class="text-[11px] font-mono bg-[var(--color-bg-main)] border border-[var(--color-border)] rounded-xl p-3 overflow-x-auto whitespace-pre text-[var(--color-text-secondary)]"></pre>
+                </div>
+
+                <p class="text-xs text-[var(--color-text-secondary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] border border-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] rounded-xl p-3">
+                    Building this into a React Native / Expo app rather than testing with curl? A ready-to-copy
+                    reference implementation (device id, batching queue, crash handler, session + screen tracking) is
+                    documented in <code class="font-mono">docs/mobile-monitor-integration.md</code> and mirrored in
+                    <code class="font-mono">uptinger-mobile/README.md</code> — copy those files instead of hand-rolling the queue yourself.
+                </p>
+
+                <div class="flex justify-end pt-1">
+                    <button type="button" onclick="closeMobileInstallModal()"
+                        class="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-bold transition-all">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer
             class="border-t border-[var(--color-bg-surface)] py-4 text-center text-xs text-[var(--color-text-muted)]">
@@ -681,6 +926,10 @@
         <!-- Client Scripting Engine -->
         <script>
             let monitors = <%- jsonScript(sites) %>;
+            // Populated by fetchAndRenderMobileAnalytics() and consumed by renderLogsTable()'s
+            // mobile branch — the Heartbeat Event Logs table doubles as the mobile event feed
+            // (screen views/crashes/sessions/device info) for 'mobile' type monitors.
+            let mobileEventFeedCache = [];
 
             function getMonitorIdFromUrl() {
                 const raw = new URLSearchParams(window.location.search).get('monitor');
@@ -1295,24 +1544,21 @@
                 });
 
                 const hasNginx = latest.nginx_active_connections != null;
-                document.getElementById('vpsNginxNotDetected').classList.toggle('hidden', hasNginx);
-                document.getElementById('vpsNginxCards').classList.toggle('hidden', !hasNginx);
-                if (hasNginx) {
-                    document.getElementById('vpsNginxActive').innerText = latest.nginx_active_connections;
-                    document.getElementById('vpsNginxRequests').innerText = latest.nginx_requests_total ?? 'N/A';
-                    document.getElementById('vpsNginxErrorSize').innerText = formatBytesRate(latest.nginx_error_log_size_bytes);
-                    document.getElementById('vpsNginxAccessSize').innerText = formatBytesRate(latest.nginx_access_log_size_bytes);
+                document.getElementById('vpsNginxCards').classList.remove('hidden');
+                document.getElementById('vpsNginxActive').innerText = hasNginx ? latest.nginx_active_connections : '-';
+                document.getElementById('vpsNginxRequests').innerText = hasNginx ? (latest.nginx_requests_total ?? 'N/A') : '-';
+                document.getElementById('vpsNginxErrorSize').innerText = hasNginx ? formatBytesRate(latest.nginx_error_log_size_bytes) : '-';
+                document.getElementById('vpsNginxAccessSize').innerText = hasNginx ? formatBytesRate(latest.nginx_access_log_size_bytes) : '-';
 
-                    const errors = Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
-                    document.getElementById('vpsNginxErrors').innerHTML = errors.length > 0
-                        ? errors.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
-                        : '<div class="text-[var(--color-text-muted)]">No recent errors.</div>';
+                const errors = hasNginx && Array.isArray(latest.nginx_recent_errors) ? latest.nginx_recent_errors : [];
+                document.getElementById('vpsNginxErrors').innerHTML = errors.length > 0
+                    ? errors.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
+                    : '<div class="text-[var(--color-text-muted)]">No recent errors.</div>';
 
-                    const accessLines = Array.isArray(latest.nginx_recent_access) ? latest.nginx_recent_access : [];
-                    document.getElementById('vpsNginxAccess').innerHTML = accessLines.length > 0
-                        ? accessLines.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
-                        : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
-                }
+                const accessLines = hasNginx && Array.isArray(latest.nginx_recent_access) ? latest.nginx_recent_access : [];
+                document.getElementById('vpsNginxAccess').innerHTML = accessLines.length > 0
+                    ? accessLines.map(line => `<div class="whitespace-pre">${escapeHtml(line)}</div>`).join('')
+                    : '<div class="text-[var(--color-text-muted)]">No recent access log lines.</div>';
 
                 initVpsChart();
                 if (vpsChartInstance) {
@@ -1431,9 +1677,23 @@
                 renderActiveMonitor(id);
             }
 
+            let lastActiveMonitorId = null;
+
             function renderActiveMonitor(id) {
                 const m = monitors.find(x => x.id === id);
                 if (!m) return;
+
+                // renderActiveMonitor() is called on every 5s live-refresh tick, not just on an
+                // actual selection change (see refreshDashboardData) — only reset mobile-analytics
+                // state when the selection genuinely changed, otherwise this would wipe the feed
+                // (and cause the logs table to flash "No mobile events yet") every tick, which was
+                // itself a source of the jerk.
+                const monitorChanged = id !== lastActiveMonitorId;
+                lastActiveMonitorId = id;
+                if (monitorChanged) {
+                    mobileEventFeedCache = [];
+                    mobileAnalyticsSignature = null;
+                }
 
                 const nameEl = document.getElementById('activeName');
                 if (nameEl) nameEl.innerText = m.name;
@@ -1517,19 +1777,354 @@
                 renderLogsTable();
 
                 const isVps = m.type === 'vps';
+                const isMobile = m.type === 'mobile';
                 const vpsCard = document.getElementById('vpsPerformanceCard');
+                const mobileCard = document.getElementById('mobileAnalyticsCard');
                 const httpCard = document.getElementById('httpMetricsCard');
                 const chartRow = document.getElementById('responseChartRow');
                 if (vpsCard) vpsCard.classList.toggle('hidden', !isVps);
-                if (httpCard) httpCard.classList.toggle('hidden', isVps);
-                if (chartRow) chartRow.classList.toggle('hidden', isVps);
+                if (mobileCard) mobileCard.classList.toggle('hidden', !isMobile);
+                if (httpCard) httpCard.classList.toggle('hidden', isVps || isMobile);
+                if (chartRow) chartRow.classList.toggle('hidden', isVps || isMobile);
 
-                if (isVps) {
-                    fetchAndRenderVpsMetrics(m);
+                if (isMobile) {
+                    if (monitorChanged) startMobileAnalyticsPolling(m);
                 } else {
-                    updateResponseChart(m);
-                    updateUptimePieChart(m);
+                    stopMobileAnalyticsPolling();
+                    if (isVps) {
+                        fetchAndRenderVpsMetrics(m);
+                    } else {
+                        updateResponseChart(m);
+                        updateUptimePieChart(m);
+                    }
                 }
+            }
+
+            // Mobile analytics are batch-derived, not real-time like heartbeats — polled on its
+            // own slower interval (not the 5s live-refresh tick, which calls renderActiveMonitor()
+            // far more often than this data actually changes) so a mobile monitor's DAU/crash/
+            // event-feed cards don't flicker every 5 seconds. Started on selecting a mobile
+            // monitor, stopped on navigating away from one.
+            const MOBILE_ANALYTICS_POLL_MS = 20000;
+            let mobileAnalyticsTimer = null;
+            let mobileAnalyticsSignature = null;
+            let mobileDauChartInstance = null;
+            let mobileCrashPieChartInstance = null;
+
+            function initMobileDauChart() {
+                const canvas = document.getElementById('mobileDauChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const primary = themeColor('--color-primary');
+                const border = themeColor('--color-border');
+                const bgSurface = themeColor('--color-bg-surface');
+                const bgMain = themeColor('--color-bg-main');
+                const textSecondary = themeColor('--color-text-secondary');
+                const textMuted = themeColor('--color-text-muted');
+
+                const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+                gradient.addColorStop(0, `color-mix(in srgb, ${primary} 35%, transparent)`);
+                gradient.addColorStop(1, `color-mix(in srgb, ${primary} 0%, transparent)`);
+
+                mobileDauChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Active Users',
+                            data: [],
+                            borderColor: primary,
+                            borderWidth: 2.5,
+                            pointBackgroundColor: primary,
+                            pointBorderColor: bgMain,
+                            pointRadius: 3,
+                            tension: 0.35,
+                            fill: true,
+                            backgroundColor: gradient
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: bgSurface,
+                                titleColor: textSecondary,
+                                bodyColor: primary,
+                                borderColor: border,
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    label: context => `${context.raw} active users`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 } } },
+                            y: { beginAtZero: true, grid: { color: `color-mix(in srgb, ${border} 50%, transparent)` }, ticks: { color: textMuted, font: { family: 'JetBrains Mono', size: 10 }, precision: 0 } }
+                        }
+                    }
+                });
+            }
+
+            function updateMobileDauChart(series) {
+                if (!mobileDauChartInstance) {
+                    initMobileDauChart();
+                    if (!mobileDauChartInstance) return;
+                }
+                const rows = series || [];
+                mobileDauChartInstance.data.labels = rows.map(r => {
+                    const d = new Date(`${r.date}T00:00:00Z`);
+                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                });
+                mobileDauChartInstance.data.datasets[0].data = rows.map(r => r.count);
+                mobileDauChartInstance.update('none');
+            }
+
+            function initMobileCrashPieChart() {
+                const canvas = document.getElementById('mobileCrashPieChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const primary = themeColor('--color-primary');
+                const error = themeColor('--color-error');
+                const bgSurface = themeColor('--color-bg-surface');
+                const textSecondary = themeColor('--color-text-secondary');
+                const textPrimary = themeColor('--color-text-primary');
+                const border = themeColor('--color-border');
+
+                mobileCrashPieChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Crash-Free', 'Crashed'],
+                        datasets: [{
+                            data: [100, 0],
+                            backgroundColor: [primary, error],
+                            borderColor: border,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '85%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: bgSurface,
+                                titleColor: textSecondary,
+                                bodyColor: primary,
+                                borderColor: border,
+                                borderWidth: 1,
+                                padding: 10,
+                                callbacks: {
+                                    label: context => `${context.label}: ${context.raw.toFixed(2)}%`
+                                }
+                            }
+                        }
+                    },
+                    plugins: [centerTextPlugin]
+                });
+
+                mobileCrashPieChartInstance.config._centerText = {
+                    value: '100%',
+                    label: 'CRASH-FREE',
+                    valueColor: textPrimary,
+                    labelColor: textSecondary
+                };
+                mobileCrashPieChartInstance.update();
+            }
+
+            function updateMobileCrashPieChart(crashFreeRate) {
+                if (!mobileCrashPieChartInstance) {
+                    initMobileCrashPieChart();
+                    if (!mobileCrashPieChartInstance) return;
+                }
+                const rate = crashFreeRate ? crashFreeRate.rate : 1;
+                const crashFreePct = Math.max(0, Math.min(1, rate)) * 100;
+                const crashedPct = 100 - crashFreePct;
+
+                mobileCrashPieChartInstance.data.datasets[0].data = [crashFreePct, crashedPct];
+                mobileCrashPieChartInstance.config._centerText.value = `${crashFreePct.toFixed(1)}%`;
+                mobileCrashPieChartInstance.update('none');
+
+                const freeEl = document.getElementById('pieCrashFreeValue');
+                const crashedEl = document.getElementById('pieCrashedValue');
+                if (freeEl) freeEl.innerText = `${crashFreePct.toFixed(2)}%`;
+                if (crashedEl) crashedEl.innerText = `${crashedPct.toFixed(2)}%`;
+            }
+
+            function startMobileAnalyticsPolling(m) {
+                stopMobileAnalyticsPolling();
+                fetchAndRenderMobileAnalytics(m);
+                mobileAnalyticsTimer = setInterval(() => fetchAndRenderMobileAnalytics(m), MOBILE_ANALYTICS_POLL_MS);
+            }
+
+            function stopMobileAnalyticsPolling() {
+                if (mobileAnalyticsTimer) {
+                    clearInterval(mobileAnalyticsTimer);
+                    mobileAnalyticsTimer = null;
+                }
+            }
+
+            async function fetchAndRenderMobileAnalytics(m) {
+                try {
+                    const dauRange = document.getElementById('mobileDauRangeFilter')?.value || '7d';
+                    const res = await fetch(`/api/monitors/${m.id}/mobile-analytics?range=${dauRange}`);
+                    const json = await res.json();
+                    if (!json.status || !json.data) return;
+                    const d = json.data;
+
+                    // Skip the DOM rewrite entirely when nothing actually changed since the last
+                    // poll — the 20s interval alone doesn't guarantee new data arrived in that
+                    // window, and re-writing identical innerHTML still flashes hover/tooltip state.
+                    const signature = JSON.stringify({
+                        dau: d.dau, wau: d.wau, mau: d.mau,
+                        dau_series: (d.dau_series || []).map(r => `${r.date}:${r.count}`),
+                        sessions: d.crash_free_rate && d.crash_free_rate.sessions,
+                        rate: d.crash_free_rate && d.crash_free_rate.rate,
+                        issues: (d.crash_issues || []).map(i => `${i.signature}:${i.occurrence_count}`),
+                        events: (d.custom_events || []).map(e => `${e.event_name}:${e.count}`),
+                        versions: (d.version_breakdown || []).map(v => `${v.app_version}:${v.count}`),
+                        os: (d.os_breakdown || []).map(o => `${o.os_name} ${o.os_version}:${o.count}`),
+                        region: (d.region_breakdown || []).map(r => `${r.region}:${r.count}`),
+                        feed: (d.event_feed || []).map(ev => ev.id)
+                    });
+                    if (signature === mobileAnalyticsSignature) return;
+                    mobileAnalyticsSignature = signature;
+
+                    document.getElementById('mobileDau').textContent = d.dau ?? '-';
+                    document.getElementById('mobileWau').textContent = d.wau ?? '-';
+                    document.getElementById('mobileMau').textContent = d.mau ?? '-';
+                    updateMobileDauChart(d.dau_series);
+                    updateMobileCrashPieChart(d.crash_free_rate);
+                    document.getElementById('mobileSessions').textContent = (d.crash_free_rate && d.crash_free_rate.sessions) ?? 0;
+                    const rate = d.crash_free_rate ? Math.round(d.crash_free_rate.rate * 1000) / 10 : 100;
+                    document.getElementById('mobileCrashFreeRate').textContent = `${rate}%`;
+
+                    const issuesEl = document.getElementById('mobileCrashIssues');
+                    const issues = d.crash_issues || [];
+                    issuesEl.innerHTML = issues.length
+                        ? issues.map(i => `<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--color-border)] last:border-0">
+                                <span class="truncate text-[var(--color-text-primary)]" title="${escapeHtml(i.title || i.signature)}">${escapeHtml(i.title || i.signature)}</span>
+                                <span class="shrink-0 text-[var(--color-error)] font-bold">${i.occurrence_count}x</span>
+                            </div>`).join('')
+                        : '<p class="text-[var(--color-text-muted)]">No crashes reported yet.</p>';
+
+                    const eventsEl = document.getElementById('mobileCustomEvents');
+                    const events = d.custom_events || [];
+                    eventsEl.innerHTML = events.length
+                        ? events.map(e => `<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--color-border)] last:border-0">
+                                <span class="truncate text-[var(--color-text-primary)]">${escapeHtml(e.event_name || 'unnamed')}</span>
+                                <span class="shrink-0">${e.count}</span>
+                            </div>`).join('')
+                        : '<p class="text-[var(--color-text-muted)]">No custom events yet.</p>';
+
+                    const versionEl = document.getElementById('mobileVersionBreakdown');
+                    const versions = d.version_breakdown || [];
+                    versionEl.innerHTML = versions.length
+                        ? versions.map(v => `<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--color-border)] last:border-0">
+                                <span class="text-[var(--color-text-primary)]">${escapeHtml(v.app_version || 'unknown')}</span>
+                                <span>${v.count} devices</span>
+                            </div>`).join('')
+                        : '<p class="text-[var(--color-text-muted)]">No data yet.</p>';
+
+                    const osEl = document.getElementById('mobileOsBreakdown');
+                    const osRows = d.os_breakdown || [];
+                    osEl.innerHTML = osRows.length
+                        ? osRows.map(o => `<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--color-border)] last:border-0">
+                                <span class="text-[var(--color-text-primary)]">${escapeHtml(o.os_name || 'unknown')} ${escapeHtml(o.os_version || '')}</span>
+                                <span>${o.count} devices</span>
+                            </div>`).join('')
+                        : '<p class="text-[var(--color-text-muted)]">No data yet.</p>';
+
+                    const regionEl = document.getElementById('mobileRegionBreakdown');
+                    const regionRows = d.region_breakdown || [];
+                    regionEl.innerHTML = regionRows.length
+                        ? regionRows.map(r => `<div class="flex items-center justify-between gap-2 py-1 border-b border-[var(--color-border)] last:border-0">
+                                <span class="text-[var(--color-text-primary)]">${escapeHtml(r.region || 'unknown')}</span>
+                                <span>${r.count} devices</span>
+                            </div>`).join('')
+                        : '<p class="text-[var(--color-text-muted)]">No data yet.</p>';
+
+                    // Per-event detail (screen views, crashes, sessions) is rendered in the shared
+                    // Heartbeat Event Logs table below rather than a separate list here — see
+                    // renderLogsTable()'s mobile branch.
+                    mobileEventFeedCache = d.event_feed || [];
+                    renderLogsTable();
+                } catch (e) {
+                    console.error('Failed to load mobile analytics', e);
+                }
+            }
+
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            }
+
+            function showMobileInstallModal() {
+                const m = monitors.find(x => x.id === activeId);
+                if (!m) return;
+                fetch(`/api/monitors/${m.id}/mobile-install`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.status || !res.data) {
+                            showToast(res.message || 'Failed to load mobile install info', 'error');
+                            return;
+                        }
+                        const { ingest_url, token } = res.data;
+
+                        document.getElementById('mobileInstallUrl').textContent = ingest_url;
+                        document.getElementById('mobileInstallToken').textContent = token;
+
+                        document.getElementById('mobileInstallCurl').textContent =
+`curl -X POST "${ingest_url}" \\
+  -H "Authorization: Bearer ${token}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "device_id": "test-device-1",
+    "session_id": "test-session-1",
+    "app_version": "1.0.0",
+    "os_name": "android",
+    "os_version": "14",
+    "events": [
+      { "type": "session_start" },
+      { "type": "custom", "name": "screen_view", "props": { "screen": "Home" } }
+    ]
+  }'`;
+
+                        document.getElementById('mobileInstallFetch').textContent =
+`async function sendUptingerEvents(events) {
+  await fetch("${ingest_url}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer ${token}"
+    },
+    body: JSON.stringify({
+      device_id: getOrCreateDeviceId(), // your own stable per-install id
+      app_version: "1.0.0",
+      events
+    })
+  });
+}
+
+// e.g. on a screen change:
+sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Home' } }]);`;
+
+                        const modal = document.getElementById('mobileInstallModal');
+                        const container = document.getElementById('mobileInstallContainer');
+                        modal.classList.remove('hidden');
+                        setTimeout(() => container.classList.remove('scale-95', 'opacity-0'), 10);
+                    })
+                    .catch(() => showToast('Failed to load mobile install info', 'error'));
+            }
+
+            function closeMobileInstallModal() {
+                const modal = document.getElementById('mobileInstallModal');
+                const container = document.getElementById('mobileInstallContainer');
+                container.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
             }
 
             // The server sends `time` pre-formatted in UTC ("HH:MM"), which doesn't match the
@@ -1619,16 +2214,12 @@
                 `;
             }
 
-            function copyResponseHeaders(logId, btn) {
-                const m = monitors.find(x => x.id === activeId);
-                const log = m && m.logs ? m.logs.find(l => l.id === logId) : null;
-                if (!log || !log.response_headers) return;
-
-                let text = log.response_headers;
-                try { text = JSON.stringify(JSON.parse(log.response_headers), null, 2); } catch { /* copy raw as-is */ }
-
+            // Shared by copyResponseHeaders and copyMobileEventJson — swaps the trigger button's
+            // icon to a checkmark briefly on success, same pattern either caller used before this
+            // was factored out.
+            function copyTextToClipboard(text, btn, successMsg, failMsg) {
                 const done = () => {
-                    showToast('Response copied to clipboard', 'success');
+                    showToast(successMsg, 'success');
                     if (btn) {
                         const original = btn.innerHTML;
                         btn.innerHTML = `<svg class="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
@@ -1638,7 +2229,7 @@
 
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(done).catch(() => {
-                        showToast('Failed to copy response', 'error');
+                        showToast(failMsg, 'error');
                     });
                 } else {
                     const ta = document.createElement('textarea');
@@ -1647,9 +2238,43 @@
                     ta.style.opacity = '0';
                     document.body.appendChild(ta);
                     ta.select();
-                    try { document.execCommand('copy'); done(); } catch { showToast('Failed to copy response', 'error'); }
+                    try { document.execCommand('copy'); done(); } catch { showToast(failMsg, 'error'); }
                     document.body.removeChild(ta);
                 }
+            }
+
+            function copyResponseHeaders(logId, btn) {
+                const m = monitors.find(x => x.id === activeId);
+                const log = m && m.logs ? m.logs.find(l => l.id === logId) : null;
+                if (!log || !log.response_headers) return;
+
+                let text = log.response_headers;
+                try { text = JSON.stringify(JSON.parse(log.response_headers), null, 2); } catch { /* copy raw as-is */ }
+
+                copyTextToClipboard(text, btn, 'Response copied to clipboard', 'Failed to copy response');
+            }
+
+            // kind: 'device' copies the device-info JSON shown in the Device column; 'details'
+            // copies whatever the Details column is showing for that row (stack trace, props, or
+            // just the session id) — looked up by event id since mobileEventFeedCache is filtered/
+            // re-ordered independently of what's currently rendered.
+            function copyMobileEventJson(kind, eventId, btn) {
+                const ev = (mobileEventFeedCache || []).find(e => e.id === eventId);
+                if (!ev) return;
+
+                let text;
+                if (kind === 'device') {
+                    text = JSON.stringify(mobileDevicePayload(ev), null, 2);
+                } else if (ev.event_type === 'crash' || ev.event_type === 'error') {
+                    text = ev.stack_trace ? `${ev.event_name || ''}\n\n${ev.stack_trace}` : (ev.event_name || '');
+                } else if (ev.props && Object.keys(ev.props).length > 0) {
+                    text = JSON.stringify(ev.props, null, 2);
+                } else {
+                    text = ev.session_id || '';
+                }
+                if (!text) return;
+
+                copyTextToClipboard(text, btn, 'Copied to clipboard', 'Failed to copy');
             }
 
             function getFilteredLogs() {
@@ -1671,12 +2296,195 @@
                 return logs.slice(0, limit);
             }
 
+            // The Status filter's meaning depends on the active monitor: Up/Down for heartbeat
+            // checks, or event type (crash/error/session/custom) for mobile monitors. Swaps the
+            // <option> list in place so the same <select id="logsStatusFilter"> serves both, and
+            // resets to "ALL" whenever the kind changes (a stale "ERROR" selection carried over
+            // to a mobile monitor would silently filter everything out).
+            let logsStatusFilterKind = null;
+            function updateLogsStatusFilterOptions(isMobile) {
+                const kind = isMobile ? 'mobile' : 'heartbeat';
+                if (logsStatusFilterKind === kind) return;
+                logsStatusFilterKind = kind;
+                const statusEl = document.getElementById('logsStatusFilter');
+                if (!statusEl) return;
+                statusEl.innerHTML = isMobile
+                    ? `<option value="ALL" selected>All event types</option>
+                       <option value="screen_view">Screen views</option>
+                       <option value="custom">Custom (other)</option>
+                       <option value="session_start">Session start</option>
+                       <option value="session_end">Session end</option>
+                       <option value="error">Error</option>
+                       <option value="crash">Crash</option>`
+                    : `<option value="ALL" selected>All statuses</option>
+                       <option value="200 OK">Up (200 OK)</option>
+                       <option value="ERROR">Down (Error)</option>`;
+            }
+
+            // "screen_view" is stored as event_type 'custom' with event_name 'screen_view' (see
+            // uptinger-mobile's monitoring/sdk.ts logEvent calls) — the filter above treats it as
+            // its own kind since it dominates the feed, so match on name here, not just type.
+            function matchesEventTypeFilter(ev, filter) {
+                if (filter === 'ALL') return true;
+                if (filter === 'screen_view') return ev.event_type === 'custom' && ev.event_name === 'screen_view';
+                if (filter === 'custom') return ev.event_type === 'custom' && ev.event_name !== 'screen_view';
+                return ev.event_type === filter;
+            }
+
+            function mobileDevicePayload(ev) {
+                const device = {
+                    device_id: ev.device_id,
+                    device_model: ev.device_model,
+                    os: [ev.os_name, ev.os_version].filter(Boolean).join(' '),
+                    app_version: ev.app_version,
+                    build: ev.build_number,
+                    region: ev.region,
+                    locale: ev.locale,
+                    timezone: ev.timezone
+                };
+                Object.keys(device).forEach(k => { if (!device[k]) delete device[k]; });
+                return device;
+            }
+
+            const COPY_ICON_SVG = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
+            function copyIconButton(kind, eventId) {
+                return `<button type="button" onclick="copyMobileEventJson('${kind}', ${eventId}, this)" title="Copy"
+                    class="shrink-0 p-1 rounded-md hover:bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">${COPY_ICON_SVG}</button>`;
+            }
+
+            function formatMobileDevice(ev) {
+                const json = JSON.stringify(mobileDevicePayload(ev));
+                return `<div class="flex items-center gap-1.5">
+                        <span class="cursor-help truncate block max-w-[220px]" title="${escapeHtml(JSON.stringify(mobileDevicePayload(ev), null, 2))}">${escapeHtml(json)}</span>
+                        ${copyIconButton('device', ev.id)}
+                    </div>`;
+            }
+
+            function formatMobileEventDetails(ev) {
+                if (ev.event_type === 'crash' || ev.event_type === 'error') {
+                    // The actual error message (event_name) is the useful summary here — the Event
+                    // badge next to it just says "crash"/"error" (see renderLogsTable), so this is
+                    // where that message actually shows. Full message + stack trace both go in the
+                    // tooltip and the copy button, even though only the message is visible inline.
+                    const summary = ev.event_name || (ev.stack_trace || '').split('\n')[0] || '';
+                    const full = ev.stack_trace ? `${ev.event_name || ''}\n\n${ev.stack_trace}` : (ev.event_name || '');
+                    return `<div class="flex items-center gap-1.5">
+                            <span class="cursor-help truncate block max-w-xs text-[var(--color-error)]" title="${escapeHtml(full)}">${escapeHtml(summary)}</span>
+                            ${copyIconButton('details', ev.id)}
+                        </div>`;
+                }
+                if (ev.props && Object.keys(ev.props).length > 0) {
+                    const json = JSON.stringify(ev.props);
+                    return `<div class="flex items-center gap-1.5">
+                            <span class="cursor-help truncate block max-w-xs" title="${escapeHtml(JSON.stringify(ev.props, null, 2))}">${escapeHtml(json)}</span>
+                            ${copyIconButton('details', ev.id)}
+                        </div>`;
+                }
+                if (ev.session_id) {
+                    return `<div class="flex items-center gap-1.5">
+                            <span class="truncate block max-w-xs text-[var(--color-text-muted)]">session ${escapeHtml(ev.session_id.slice(0, 8))}</span>
+                            ${copyIconButton('details', ev.id)}
+                        </div>`;
+                }
+                return '<span class="text-[var(--color-text-muted)]">—</span>';
+            }
+
+            // Crash/error rows are the ones worth flagging red; everything else (screen views,
+            // sessions, other custom events) shares one neutral blue so the red genuinely stands
+            // out in the feed instead of competing with several other colors.
+            const MOBILE_EVENT_BADGE_RED = 'bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] text-[var(--color-error)] border border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]';
+            const MOBILE_EVENT_BADGE_BLUE = 'bg-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] text-[var(--color-primary)] border border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]';
+            function mobileEventBadgeClass(eventType) {
+                return (eventType === 'crash' || eventType === 'error') ? MOBILE_EVENT_BADGE_RED : MOBILE_EVENT_BADGE_BLUE;
+            }
+
+            // The live-refresh poll (every 5s, see refreshDashboardData) calls renderLogsTable()
+            // on every tick regardless of whether anything actually changed — without this guard,
+            // that meant a full tbody teardown/rebuild (and header rewrite) 12x/minute, which is
+            // what caused the visible jerk: any hover, tooltip, or in-progress copy click in the
+            // table got reset mid-interaction. Only the row *identity* (ids, in order) needs to
+            // match for the signature to be equal — the row content itself is immutable once a
+            // heartbeat check / mobile event is created, so same-ids-in-order guarantees identical
+            // rendered output.
+            let logsTableSignature = null;
+
             function renderLogsTable() {
                 const tbody = document.getElementById('logsTableBody');
+                const headRow = document.getElementById('logsTableHeadRow');
                 if (!tbody) return;
 
-                tbody.innerHTML = '';
+                const m = monitors.find(x => x.id === activeId);
+                const isMobile = !!m && m.type === 'mobile';
+                updateLogsStatusFilterOptions(isMobile);
+
+                if (isMobile) {
+                    const statusEl = document.getElementById('logsStatusFilter');
+                    const typeFilter = statusEl ? statusEl.value : 'ALL';
+                    const dateEl = document.getElementById('logsDateFilter');
+                    const dateFilter = dateEl ? dateEl.value : '';
+                    const limitEl = document.getElementById('logsLimitFilter');
+                    const limit = limitEl ? parseInt(limitEl.value, 10) : 20;
+
+                    let events = mobileEventFeedCache || [];
+                    events = events.filter(ev => matchesEventTypeFilter(ev, typeFilter));
+                    if (dateFilter) events = events.filter(ev => ev.created_at && ev.created_at.slice(0, 10) === dateFilter);
+                    events = events.slice(0, limit);
+
+                    const signature = 'mobile:' + activeId + ':' + events.map(ev => ev.id).join(',');
+                    if (signature === logsTableSignature) return;
+                    logsTableSignature = signature;
+
+                    if (headRow) {
+                        headRow.innerHTML = `
+                            <th class="py-2.5 px-4 rounded-l-xl">Timestamp</th>
+                            <th class="py-2.5 px-4">Event</th>
+                            <th class="py-2.5 px-4">Device</th>
+                            <th class="py-2.5 px-4 rounded-r-xl">Details</th>
+                        `;
+                    }
+
+                    tbody.innerHTML = '';
+                    if (events.length > 0) {
+                        events.forEach(ev => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_30%,transparent)] transition-colors';
+                            const badgeClass = mobileEventBadgeClass(ev.event_type);
+                            // Crash/error names come straight from a thrown error's message (e.g. a
+                            // React "Element type is invalid..." message can run hundreds of chars) —
+                            // the badge just says "crash"/"error" for those, the actual message lives
+                            // in the Details column (formatMobileEventDetails) where there's room for it.
+                            const isCrashOrError = ev.event_type === 'crash' || ev.event_type === 'error';
+                            const label = escapeHtml(isCrashOrError ? ev.event_type : (ev.event_name || ev.event_type));
+                            tr.innerHTML = `
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${ev.created_at ? new Date(ev.created_at).toLocaleString() : ''}</td>
+                                <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block max-w-[240px] truncate align-bottom ${badgeClass}">${label}</span></td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatMobileDevice(ev)}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatMobileEventDetails(ev)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)]">No mobile events recorded yet.</td></tr>`;
+                    }
+                    return;
+                }
+
                 const logs = getFilteredLogs();
+                const signature = 'heartbeat:' + activeId + ':' + logs.map(log => log.id).join(',');
+                if (signature === logsTableSignature) return;
+                logsTableSignature = signature;
+
+                if (headRow) {
+                    headRow.innerHTML = `
+                        <th class="py-2.5 px-4 rounded-l-xl">Timestamp</th>
+                        <th class="py-2.5 px-4">Status</th>
+                        <th class="py-2.5 px-4">Latency</th>
+                        <th class="py-2.5 px-4">Details</th>
+                        <th class="py-2.5 px-4 rounded-r-xl">Response</th>
+                    `;
+                }
+
+                tbody.innerHTML = '';
 
                 if (logs.length > 0) {
                     logs.forEach(log => {

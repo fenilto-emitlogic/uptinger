@@ -22,3 +22,15 @@ export const agentIngestRateLimiter = rateLimit({
     keyGenerator: (req: Request) => `${ipKeyGenerator(req.ip || '')}:${req.params.id}`,
     message: { status: false, code: 429, message: 'Too many metrics pushes. Slow down your agent interval.', data: {}, error: 'Rate limit exceeded' },
 });
+
+// Mobile apps batch several events into one push (crash/event/session in a single request)
+// rather than pushing every 15-30s like a VPS agent, so this allows more requests per window
+// than agentIngestRateLimiter — keyed on monitor id for the same reason (isolate noisy apps).
+export const mobileIngestRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: Request) => `${ipKeyGenerator(req.ip || '')}:${req.params.id}`,
+    message: { status: false, code: 429, message: 'Too many event batches. Slow down your app\'s flush interval.', data: {}, error: 'Rate limit exceeded' },
+});

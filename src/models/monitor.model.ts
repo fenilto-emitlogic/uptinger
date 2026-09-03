@@ -17,7 +17,7 @@ function encryptSecrets(config: Record<string, any>): Record<string, any> {
 // SQLite's CURRENT_TIMESTAMP stores UTC as "YYYY-MM-DD HH:MM:SS" with no timezone
 // marker, so `new Date(...)` on the client would misread it as local time. Normalize
 // to a proper UTC ISO string ("...T...Z") before it ever reaches the client.
-function toUtcIso(sqliteTimestamp: string): string {
+export function toUtcIso(sqliteTimestamp: string): string {
     if (sqliteTimestamp.includes('T') || sqliteTimestamp.endsWith('Z')) return sqliteTimestamp;
     return sqliteTimestamp.replace(' ', 'T') + 'Z';
 }
@@ -123,10 +123,10 @@ class MonitorModel {
         return rows.map(r => this.parseMonitor(r, tagsByMonitor.get(r.id), checksByMonitor.get(r.id)));
     }
 
-    findById(id: number): IFMonitorParsed | undefined {
+    findById(id: number, checksLimit = 50): IFMonitorParsed | undefined {
         const row = db.prepare(`SELECT * FROM tbl_monitors WHERE id = ?`).get(id) as IFMonitor | undefined;
         if (!row) return undefined;
-        return this.parseMonitor(row);
+        return this.parseMonitor(row, undefined, undefined, checksLimit);
     }
 
     create(data: {
@@ -315,6 +315,8 @@ class MonitorModel {
 
         db.prepare(`DELETE FROM tbl_monitor_checks WHERE monitor_id = ?`).run(id);
         db.prepare(`DELETE FROM tbl_monitor_analytics WHERE monitor_id = ?`).run(id);
+        db.prepare(`DELETE FROM tbl_mobile_events WHERE monitor_id = ?`).run(id);
+        db.prepare(`DELETE FROM tbl_mobile_crash_issues WHERE monitor_id = ?`).run(id);
 
         const RUNTIME_CONFIG_KEYS = [
             'current_response', 'avg_response_24h', 'uptime_24h', 'uptime_30d', 'uptime_1y',
@@ -330,7 +332,7 @@ class MonitorModel {
         return this.findById(id);
     }
 
-    private parseMonitor(r: IFMonitor, presetTags?: string[], presetChecks?: any[]): IFMonitorParsed {
+    private parseMonitor(r: IFMonitor, presetTags?: string[], presetChecks?: any[], checksLimit = 50): IFMonitorParsed {
         let parsedConfig: Record<string, any> = {};
         try {
             parsedConfig = decryptSecrets(JSON.parse(r.config || '{}'));
@@ -344,8 +346,8 @@ class MonitorModel {
         const hbs = presetChecks ?? db.prepare(`
             SELECT * FROM tbl_monitor_checks
             WHERE monitor_id = ?
-            ORDER BY id DESC LIMIT 50
-        `).all(r.id) as any[];
+            ORDER BY id DESC LIMIT ?
+        `).all(r.id, checksLimit) as any[];
 
         const logs = hbs.map(h => ({
             id: h.id,
