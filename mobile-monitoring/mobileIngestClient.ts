@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { getDeviceContext, getOrCreateDeviceId } from './deviceContext';
 
 export interface MonitoringConfig {
@@ -28,17 +27,25 @@ export async function pushEventBatch(config: MonitoringConfig, sessionId: string
     const deviceId = await getOrCreateDeviceId();
     const device = getDeviceContext();
 
-    await axios.post(
-        `${config.serverUrl.replace(/\/$/, '')}/api/mobile/${config.monitorId}/ingest`,
-        {
-            device_id: deviceId,
-            session_id: sessionId,
-            ...device,
-            events
-        },
-        {
-            headers: { Authorization: `Bearer ${config.mobileToken}` },
-            timeout: 10000
-        }
-    );
+    // Native fetch (built into React Native/Expo) rather than axios — this file gets
+    // copied into other apps, and dropping the dependency means one less package for
+    // an integrator to install just for this SDK.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+        const res = await fetch(`${config.serverUrl.replace(/\/$/, '')}/api/mobile/${config.monitorId}/ingest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.mobileToken}` },
+            body: JSON.stringify({
+                device_id: deviceId,
+                session_id: sessionId,
+                ...device,
+                events
+            }),
+            signal: controller.signal
+        });
+        if (!res.ok) throw new Error(`Ingest request failed: ${res.status}`);
+    } finally {
+        clearTimeout(timeout);
+    }
 }

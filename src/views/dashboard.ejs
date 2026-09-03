@@ -1626,7 +1626,7 @@
                         .sort((a, b) => (b.cpu_pct || 0) - (a.cpu_pct || 0))
                         .map(c => `
                             <tr class="hover:bg-[color-mix(in_srgb,var(--color-bg-surface)_30%,transparent)] transition-colors">
-                                <td class="py-2.5 px-4 text-[var(--color-text-primary)] font-semibold">${escapeHtml(c.name || c.id || '-')}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)] font-semibold">${escapeHtml(c.name || c.id || '-')}</td>
                                 <td class="py-2.5 px-4 text-[var(--color-text-secondary)] max-w-[220px] truncate">${escapeHtml(c.image || '-')}</td>
                                 <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block ${stateBadgeClass(c.state)}">${escapeHtml(c.state || 'unknown')}</span></td>
                                 <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${c.state === 'running' ? (c.cpu_pct ?? 0).toFixed(1) + '%' : '-'}</td>
