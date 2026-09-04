@@ -2214,6 +2214,16 @@ sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Hom
                 return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
 
+            // Shared display format for timestamps across the dashboard's tables, e.g. "12 Jul, 2024, 10:30 AM".
+            function formatDateTime(timestamp) {
+                if (!timestamp) return '';
+                const d = new Date(timestamp);
+                if (Number.isNaN(d.getTime())) return '';
+                const datePart = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return `${datePart}, ${timePart}`;
+            }
+
             // Not cached: the dashboard live-polls every 5s (LIVE_REFRESH_INTERVAL_MS), so a
             // cached response would go stale almost immediately and mask incoming checks.
             async function getChartHeartbeats(m, range) {
@@ -2533,7 +2543,7 @@ sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Hom
                             const isCrashOrError = ev.event_type === 'crash' || ev.event_type === 'error';
                             const label = escapeHtml(isCrashOrError ? ev.event_type : (ev.event_name || ev.event_type));
                             tr.innerHTML = `
-                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${ev.created_at ? new Date(ev.created_at).toLocaleString() : ''}</td>
+                                <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatDateTime(ev.created_at)}</td>
                                 <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold inline-block max-w-[240px] truncate align-bottom ${badgeClass}">${label}</span></td>
                                 <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatMobileDevice(ev)}</td>
                                 <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatMobileEventDetails(ev)}</td>
@@ -2572,7 +2582,7 @@ sendUptingerEvents([{ type: 'custom', name: 'screen_view', props: { screen: 'Hom
                             ? 'bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] text-[var(--color-error)] border border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]'
                             : 'bg-[color-mix(in_srgb,var(--color-primary)_20%,transparent)] text-[var(--color-primary)] border border-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]';
                         tr.innerHTML = `
-                        <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</td>
+                        <td class="py-2.5 px-4 text-[var(--color-text-secondary)]">${formatDateTime(log.timestamp)}</td>
                         <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${log.status}</span></td>
                         <td class="py-2.5 px-4 text-[var(--color-text-primary)]">${log.ms} ms</td>
                         <td class="py-2.5 px-4 text-[var(--color-text-secondary)] truncate max-w-xs">${log.msg}</td>
